@@ -166,9 +166,22 @@ export type Ledger = z.infer<typeof Ledger>;
 // ---------------------------------------------------------------------------
 // Review decisions (shared by CLI and web)
 // ---------------------------------------------------------------------------
+/** New details from a repeated action that the reviewer chose to add to the existing draft. */
+export const MergeAdditions = z.object({
+  inScope: z.array(z.string()).optional(),
+  outOfScope: z.array(z.string()).optional(),
+  dependencies: z.array(z.string()).optional(),
+  acceptanceCriteria: z.array(z.string()).optional(),
+  deliverables: z.array(z.string()).optional(),
+  /** Permalinks of new code references to add. */
+  refs: z.array(z.string()).optional(),
+});
+export type MergeAdditions = z.infer<typeof MergeAdditions>;
+
 export const ReviewDecision = z.discriminatedUnion("action", [
   z.object({ action: z.literal("approve"), content: TicketContent.optional() }),
   z.object({ action: z.literal("reject") }),
-  z.object({ action: z.literal("merge"), into: z.string() }),
+  /** Merge into an earlier draft. Only the chosen `additions` are added; the meeting and its quotes always are. */
+  z.object({ action: z.literal("merge"), into: z.string(), additions: MergeAdditions.optional() }),
 ]);
 export type ReviewDecision = z.infer<typeof ReviewDecision>;

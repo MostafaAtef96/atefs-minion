@@ -6,7 +6,7 @@ import { z } from "zod";
 import type { AgentFactory } from "../control/session.js";
 import type { MinionConfig } from "../core/config.js";
 import { DOD_CRITERIA } from "../core/dod.js";
-import { finalize, mergeDrafts } from "../core/finalize.js";
+import { FIELD_LABELS, finalize, mergeCandidates, type ListField } from "../core/finalize.js";
 import { InputError } from "../core/inputs.js";
 import { generate } from "../core/pipeline.js";
 import { renderDraftFile } from "../core/render.js";
@@ -146,14 +146,16 @@ export async function startWebServer(opts: WebServerOptions): Promise<{ url: str
             .filter((p) => p.dedup.status === "duplicate" && p.dedup.duplicateOf && ledger.drafts[p.dedup.duplicateOf])
             .map((p) => {
               const target = ledger.drafts[p.dedup.duplicateOf!]!;
-              const preview = mergeDrafts(target, p.draft);
+              const c = mergeCandidates(target, p.draft);
               return [p.draft.id, {
                 id: target.id,
                 title: target.content.title,
                 meetings: target.sources.map((s) => s.meetingTitle),
-                additions: preview.additions,
-                newRefs: preview.newRefs,
-                mergedMarkdown: renderDraftFile(preview.merged),
+                candidates: {
+                  lists: Object.entries(c.lists).map(([field, items]) => ({ field, label: FIELD_LABELS[field as ListField], items })),
+                  refs: c.refs.map((r) => ({ permalink: r.permalink, label: `${r.path}#L${r.startLine}-L${r.endLine}${r.symbol ? ` (${r.symbol})` : ""}`, why: r.why })),
+                },
+                existingMarkdown: renderDraftFile(target),
               }];
             }),
         );

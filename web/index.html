@@ -48,6 +48,9 @@
   .dod label { font-weight: 400; margin: 0; display: flex; gap: 6px; }
   .rejected .fields { opacity: .45; }
   .merged .fields { display: none; }
+  .merge-box { display: none; margin: 8px 0; }
+  .merged .merge-box { display: block; }
+  label.pick { display: flex; gap: 8px; align-items: baseline; font-weight: 400; margin: 6px 0; }
   ul.plain { margin: 6px 0; padding-left: 18px; }
   .ok { color: var(--ok); } .bad { color: var(--bad); }
   a { color: var(--accent); }
@@ -218,22 +221,36 @@ function card(p, index, total, dup) {
   const opt = (value, label, checked) => el("label", {}, el("input", { type: "radio", name: decisionName, value, checked, onchange: () => {
     root.classList.toggle("rejected", value === "reject"); root.classList.toggle("merged", value === "merge");
   } }), label);
-  decision.append(opt("approve", "Approve", !dup), opt("reject", "Reject", false));
-  if (dup) decision.append(opt("merge", `Merge into “${dup.title}”`, true));
+  if (dup) decision.append(opt("merge", "Merge into existing ticket (recommended)", true), opt("approve", "Create a new ticket anyway", false));
+  else decision.append(opt("approve", "Approve", true));
+  decision.append(opt("reject", "Reject", false));
 
   root.append(el("div", { class: "card-head" },
     el("h3", {}, `${index + 1}/${total} · ${c.title}`),
     el("span", { class: "badge" }, c.type === "Task" ? "Task" : "User Story")));
   for (const f of d.flags) root.append(el("div", { class: "notice" }, `⚠️ ${f}`));
+  let merge = null;
   if (dup) {
-    const adds = Object.entries(dup.additions).map(([k, v]) => `${k} +${v.length}`).join(", ");
+    const how = p.dedup.layer === "L2" ? "same title" : "same work, found by Gemini";
+    merge = el("div", { class: "merge-box" });
+    const n = dup.candidates.lists.reduce((k, l) => k + l.items.length, 0) + dup.candidates.refs.length;
+    merge.append(el("div", {}, el("strong", {}, "Merging adds this meeting and its quotes to the existing ticket."),
+      n ? " Tick any new details you also want to add:" : " This meeting brought no new details."));
+    for (const l of dup.candidates.lists) {
+      for (const item of l.items) {
+        merge.append(el("label", { class: "pick" }, el("input", { type: "checkbox", "data-field": l.field, "data-value": item }), el("span", {}, el("span", { class: "hint" }, `[${l.label}] `), item)));
+      }
+    }
+    for (const r of dup.candidates.refs) {
+      merge.append(el("label", { class: "pick" }, el("input", { type: "checkbox", "data-field": "refs", "data-value": r.permalink }),
+        el("span", {}, el("span", { class: "hint" }, "[Related code] "), el("a", { href: r.permalink, target: "_blank", rel: "noopener" }, r.label), ` — ${r.why}`)));
+    }
+    merge.append(el("details", {}, el("summary", {}, "Show the existing ticket"), el("pre", {}, dup.existingMarkdown)));
     root.append(el("div", { class: "notice dup" },
-      `🔁 Possible duplicate (${p.dedup.layer}) of “${dup.title}” raised in ${dup.meetings.join(", ")}. `,
-      p.dedup.reason ? el("span", { class: "hint" }, p.dedup.reason + " ") : null,
-      `Merging adds this meeting as a source${adds ? `, plus ${adds}` : ""}.`,
-      el("details", {}, el("summary", {}, "Show merged draft"), el("pre", {}, dup.mergedMarkdown))));
+      `🔁 Already ticketed (${how}): “${dup.title}”, raised in ${dup.meetings.join(", ")}. `,
+      p.dedup.reason && p.dedup.layer !== "L2" ? el("span", { class: "hint" }, p.dedup.reason) : null));
   }
-  root.append(decision, fields);
+  root.append(...[decision, merge, fields].filter(Boolean));
   if (dup) root.classList.add("merged");
   return root;
 }
@@ -270,8 +287,16 @@ $("finalize").addEventListener("click", async () => {
     const choice = root.querySelector(`input[name="decision-${id}"]:checked`).value;
     if (choice === "approve") decisions[id] = { action: "approve", content: readContent(root) };
     else if (choice === "reject") decisions[id] = { action: "reject" };
-    else decisions[id] = { action: "merge", into: CURRENT.duplicates[id].id };
+    else {
+      const additions = {};
+      for (const box of root.querySelectorAll(".merge-box input[type=checkbox]:checked")) {
+        (additions[box.dataset.field] ??= []).push(box.dataset.value);
+      }
+      decisions[id] = { action: "merge", into: CURRENT.duplicates[id].id, additions };
+    }
   }
+  const second = Object.entries(decisions).filter(([id, d]) => d.action === "approve" && CURRENT.duplicates[id]);
+  if (second.length && !confirm(`${second.length} draft(s) are already ticketed. Create a second ticket for them anyway?`)) return;
   const out = $("result");
   try {
     $("finalize").disabled = true;
@@ -280,7 +305,7 @@ $("finalize").addEventListener("click", async () => {
       ...r.written.map((w) => el("div", { class: "ok" }, `✅ ${w.title} → ${w.file}`)),
       ...r.merged.map((m) => el("div", { class: "ok" }, `🔁 merged into draft ${m.into}${m.file ? ` → ${m.file}` : ""}`)),
       ...r.rejected.map((t) => el("div", { class: "hint" }, `✖ rejected: ${t}`)),
-      r.outDir ? el("p", {}, `Drafts and manifest.json: ${r.outDir}`) : null,
+      ...(r.outDir ? [el("p", {}, `Drafts and manifest.json: ${r.outDir}`)] : []),
     );
     await loadPending();
   } catch (e) {

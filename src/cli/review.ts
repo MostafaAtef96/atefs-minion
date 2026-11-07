@@ -3,9 +3,9 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
-import { mergeDrafts } from "../core/finalize.js";
+import { FIELD_LABELS, LIST_FIELDS, mergeCandidates, type ListField } from "../core/finalize.js";
 import { parseEditable, renderDraftFile, renderEditable } from "../core/render.js";
-import type { Ledger, PendingDraft, PendingRun, ReviewDecision, TicketContent } from "../core/schemas.js";
+import type { Draft, Ledger, MergeAdditions, PendingDraft, PendingRun, ReviewDecision, TicketContent } from "../core/schemas.js";
 
 const RULE = "─".repeat(72);
 
@@ -45,14 +45,47 @@ function describeDuplicate(p: PendingDraft, ledger: Ledger): string[] {
   const target = ledger.drafts[p.dedup.duplicateOf];
   if (!target) return [];
   const lines = [
-    `🔁 Possible duplicate (${p.dedup.layer}) of draft ${target.id}: "${target.content.title}"`,
+    `🔁 Already ticketed (${p.dedup.layer === "L2" ? "same title" : "same work, found by Gemini"}): "${target.content.title}" [${target.id}]`,
     `   raised in: ${target.sources.map((s) => s.meetingTitle).join(", ")}`,
   ];
-  if (p.dedup.reason) lines.push(`   reason: ${p.dedup.reason}`);
-  const { additions, newRefs } = mergeDrafts(target, p.draft);
-  const added = Object.entries(additions).map(([k, v]) => `${k} +${v!.length}`);
-  lines.push(`   merging adds this meeting as a source${added.length ? `, plus ${added.join(", ")}` : ""}${newRefs ? `, +${newRefs} code ref(s)` : ""}.`);
+  if (p.dedup.reason && p.dedup.layer !== "L2") lines.push(`   reason: ${p.dedup.reason}`);
+  const { count } = mergeCandidates(target, p.draft);
+  lines.push(
+    `   Recommended: [m]erge. This meeting is added to the existing ticket as a source${count ? `; you can pick from ${count} new detail(s)` : ""}.`,
+  );
   return lines;
+}
+
+/** Let the reviewer pick which new details a merge adds (default: none). */
+async function chooseAdditions(target: Draft, incoming: Draft): Promise<MergeAdditions> {
+  const c = mergeCandidates(target, incoming);
+  if (c.count === 0) return {};
+  const items: { label: string; field: ListField | "refs"; value: string }[] = [];
+  for (const field of LIST_FIELDS) {
+    for (const v of c.lists[field] ?? []) items.push({ label: `[${FIELD_LABELS[field]}] ${v}`, field, value: v });
+  }
+  for (const r of c.refs) {
+    items.push({ label: `[Related code] ${r.path}#L${r.startLine}-L${r.endLine}${r.symbol ? ` (${r.symbol})` : ""}: ${r.why}`, field: "refs", value: r.permalink });
+  }
+  console.log("\nNew details from this meeting that the existing ticket does not contain word for word:");
+  items.forEach((it, i) => console.log(`  ${String(i + 1).padStart(2)}. ${it.label}`));
+  for (;;) {
+    const answer = await ask("Add which? [Enter] none · a = all · numbers, e.g. 1,3: ");
+    let picked: number[];
+    if (!answer) picked = [];
+    else if (answer === "a") picked = items.map((_, i) => i);
+    else picked = answer.split(/[\s,]+/).filter(Boolean).map((n) => Number(n) - 1);
+    if (picked.some((n) => !Number.isInteger(n) || n < 0 || n >= items.length)) {
+      console.log("Please enter numbers from the list, 'a', or nothing.");
+      continue;
+    }
+    const additions: MergeAdditions = {};
+    for (const n of picked) {
+      const it = items[n]!;
+      (additions[it.field] ??= []).push(it.value);
+    }
+    return additions;
+  }
 }
 
 /** Interactive terminal review (plan §6 step 7). Returns one decision per draft. */
@@ -70,23 +103,29 @@ export async function reviewInTerminal(run: PendingRun, ledger: Ledger): Promise
   const decisions: Record<string, ReviewDecision> = {};
   for (const [i, p] of run.drafts.entries()) {
     let content = p.draft.content;
+    const target = p.dedup.status === "duplicate" && p.dedup.duplicateOf ? ledger.drafts[p.dedup.duplicateOf] : undefined;
     for (;;) {
       console.log(`\n${RULE}\nDraft ${i + 1}/${run.drafts.length}\n${RULE}`);
       console.log(renderDraftFile({ ...p.draft, content }));
-      const dup = describeDuplicate(p, ledger);
-      for (const l of dup) console.log(l);
-      const canMerge = dup.length > 0;
-      const options = `[a]pprove  [e]dit  [t]ype → ${content.type === "Task" ? "UserStory" : "Task"}  [r]eject${canMerge ? "  [m]erge" : ""}`;
-      const def = canMerge ? "m" : "a";
+      for (const l of target ? describeDuplicate(p, ledger) : []) console.log(l);
+      const toggle = `[t]ype → ${content.type === "Task" ? "UserStory" : "Task"}`;
+      const options = target
+        ? `[m]erge into existing  [n]ew ticket anyway  [e]dit  ${toggle}  [r]eject`
+        : `[a]pprove  [e]dit  ${toggle}  [r]eject`;
+      const def = target ? "m" : "a";
       const answer = (await ask(`\n${options}  (default ${def}): `)) || def;
-      if (answer === "a") {
+      if (target && answer === "m") {
+        decisions[p.draft.id] = { action: "merge", into: target.id, additions: await chooseAdditions(target, { ...p.draft, content }) };
+        break;
+      } else if ((!target && answer === "a") || (target && (answer === "n" || answer === "a"))) {
+        if (target) {
+          const sure = await ask(`This work is already ticketed as "${target.content.title}". Create a second ticket anyway? [y/N] `);
+          if (sure !== "y") continue;
+        }
         decisions[p.draft.id] = { action: "approve", content };
         break;
       } else if (answer === "r") {
         decisions[p.draft.id] = { action: "reject" };
-        break;
-      } else if (answer === "m" && canMerge) {
-        decisions[p.draft.id] = { action: "merge", into: p.dedup.duplicateOf! };
         break;
       } else if (answer === "e") {
         content = await editInEditor(content);

@@ -1,27 +1,63 @@
 import { existsSync } from "node:fs";
-import { copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { MinionConfig } from "./config.js";
 import { AGENT_LABEL, AGENT_NAME, renderDraftFile, renderIssueBody } from "./render.js";
-import type { Draft, Ledger, PendingRun, ReviewDecision, TicketContent } from "./schemas.js";
+import type { Draft, Ledger, MergeAdditions, PendingRun, ReviewDecision, TicketContent, VerifiedRef } from "./schemas.js";
 import type { Store } from "./store.js";
 import { writeAtomic } from "./store.js";
 import { fingerprint, normalizeItem, slugify } from "./text.js";
 
-type ListField = "inScope" | "outOfScope" | "dependencies" | "acceptanceCriteria" | "deliverables";
-const LIST_FIELDS: ListField[] = ["inScope", "outOfScope", "dependencies", "acceptanceCriteria", "deliverables"];
+export type ListField = "inScope" | "outOfScope" | "dependencies" | "acceptanceCriteria" | "deliverables";
+export const LIST_FIELDS: ListField[] = ["inScope", "outOfScope", "dependencies", "acceptanceCriteria", "deliverables"];
+export const FIELD_LABELS: Record<ListField, string> = {
+  inScope: "In Scope",
+  outOfScope: "Out of Scope",
+  dependencies: "Dependencies",
+  acceptanceCriteria: "Acceptance Criteria",
+  deliverables: "Deliverable",
+};
 
-export interface MergePreview {
-  merged: Draft;
-  /** New list items that the merge adds to the existing draft. */
-  additions: Partial<Record<ListField, string[]>>;
-  newRefs: number;
+/** Details of a repeated action that the existing draft does not contain yet. */
+export interface MergeCandidates {
+  lists: Partial<Record<ListField, string[]>>;
+  /** Code references whose lines do not overlap a reference already on the draft. */
+  refs: VerifiedRef[];
+  count: number;
 }
 
-/** Merge a repeated action into the existing draft: add the meeting as a source and union new details. */
-export function mergeDrafts(existing: Draft, incoming: Draft): MergePreview {
+function overlaps(a: VerifiedRef, b: VerifiedRef): boolean {
+  return a.path === b.path && a.startLine <= b.endLine && b.startLine <= a.endLine;
+}
+
+export function mergeCandidates(existing: Draft, incoming: Draft): MergeCandidates {
+  const lists: MergeCandidates["lists"] = {};
+  let count = 0;
+  for (const field of LIST_FIELDS) {
+    const known = new Set(existing.content[field].map(normalizeItem));
+    const added = [...new Set(incoming.content[field])].filter((item) => !known.has(normalizeItem(item)));
+    if (added.length) {
+      lists[field] = added;
+      count += added.length;
+    }
+  }
+  const refs = incoming.refs.filter((r) => !existing.refs.some((e) => overlaps(e, r)));
+  return { lists, refs, count: count + refs.length };
+}
+
+export interface MergeResult {
+  merged: Draft;
+  candidates: MergeCandidates;
+}
+
+/**
+ * Merge a repeated action into the existing draft. The new meeting and its quotes are always added;
+ * other new details only when the reviewer selected them (`additions`), so tickets do not fill up
+ * with re-worded copies of what they already say.
+ */
+export function mergeDrafts(existing: Draft, incoming: Draft, additions: MergeAdditions = {}): MergeResult {
   const merged: Draft = structuredClone(existing);
-  const additions: MergePreview["additions"] = {};
+  const candidates = mergeCandidates(existing, incoming);
 
   for (const src of incoming.sources) {
     const same = merged.sources.find((s) => s.meetingId === src.meetingId);
@@ -33,20 +69,20 @@ export function mergeDrafts(existing: Draft, incoming: Draft): MergePreview {
     }
   }
   for (const field of LIST_FIELDS) {
-    const known = new Set(merged.content[field].map(normalizeItem));
-    const added = incoming.content[field].filter((item) => !known.has(normalizeItem(item)));
-    if (added.length) {
-      merged.content[field] = [...merged.content[field], ...added];
-      additions[field] = added;
-    }
+    const chosen = new Set((additions[field] ?? []).map(normalizeItem));
+    const add = (candidates.lists[field] ?? []).filter((item) => chosen.has(normalizeItem(item)));
+    merged.content[field] = [...merged.content[field], ...add];
   }
-  merged.content.dod = [...new Set([...merged.content.dod, ...incoming.content.dod])].sort((a, b) => a - b);
-  const knownRefs = new Set(merged.refs.map((r) => r.permalink));
-  const newRefs = incoming.refs.filter((r) => !knownRefs.has(r.permalink));
-  merged.refs.push(...newRefs);
+  const chosenRefs = new Set(additions.refs ?? []);
+  merged.refs.push(...candidates.refs.filter((r) => chosenRefs.has(r.permalink)));
   merged.owner = merged.owner ?? incoming.owner;
   merged.due = merged.due ?? incoming.due;
-  return { merged, additions, newRefs: newRefs.length };
+  return { merged, candidates };
+}
+
+/** Select every candidate (used by "add all"). */
+export function allAdditions(c: MergeCandidates): MergeAdditions {
+  return { ...c.lists, refs: c.refs.map((r) => r.permalink) };
 }
 
 export interface FinalizeResult {
@@ -96,7 +132,7 @@ export async function finalize(
     } else {
       const target = ledger.drafts[decision.into];
       if (!target) throw new Error(`Cannot merge "${draft.content.title}": draft ${decision.into} is not in the ledger.`);
-      const { merged } = mergeDrafts(target, draft);
+      const { merged } = mergeDrafts(target, draft, decision.additions);
       ledger.drafts[merged.id] = merged;
       if (merged.file && existsSync(path.dirname(merged.file))) {
         await writeFile(merged.file, renderDraftFile(merged), "utf8");
@@ -186,4 +222,18 @@ export async function writeManifest(ledger: Ledger, meetingId: string, extras: M
     skipped: extras.skipped ?? previous["skipped"] ?? [],
   };
   await writeAtomic(file, JSON.stringify(manifest, null, 2));
+}
+
+/** Remove a draft created by mistake: deletes it from the ledger and its meeting, deletes its file, rewrites the manifest. */
+export async function removeDraft(store: Store, draftId: string): Promise<{ title: string; file: string | null }> {
+  const ledger = await store.loadLedger();
+  const draft = ledger.drafts[draftId];
+  if (!draft) throw new Error(`No draft with id "${draftId}". See "minion ledger list".`);
+  delete ledger.drafts[draftId];
+  const meetings = Object.entries(ledger.meetings).filter(([, m]) => m.drafts.includes(draftId));
+  for (const [, m] of meetings) m.drafts = m.drafts.filter((d) => d !== draftId);
+  if (draft.file && existsSync(draft.file)) await rm(draft.file);
+  await store.saveLedger(ledger);
+  for (const [id] of meetings) await writeManifest(ledger, id);
+  return { title: draft.content.title, file: draft.file ?? null };
 }

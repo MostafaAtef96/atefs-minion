@@ -154,6 +154,7 @@ export async function generate(rawInputs: RunInputs, deps: PipelineDeps): Promis
           const checked = await verifyRefs({ refs: p2.refs, srcPath, repo, sha, tracked });
           refs = checked.verified;
           for (const d of checked.dropped) log("dropped ref", `${d.ref.path}:${d.ref.startLine}-${d.ref.endLine} — ${d.reason}`);
+          for (const a of checked.adjusted) log("adjusted ref", `${a.ref.path}:${a.ref.startLine}-${a.ref.endLine} — ${a.reason}`);
         } catch (e) {
           if (!(e instanceof StructuredOutputError)) throw e;
           flags.push("Code search failed; related code was not added.");

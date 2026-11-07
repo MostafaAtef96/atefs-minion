@@ -136,8 +136,26 @@ describe("code references", () => {
     expect(r.verified.map((v) => v.path)).toEqual(["lib/command.js", "lib/help.js"]);
     expect(r.verified[0]!.permalink).toBe(`https://github.com/tj/commander.js/blob/${git.headSha}/lib/command.js#L10-L20`);
     expect(r.dropped.map((d) => d.ref.why)).toEqual(["hallucinated", "out of range", "escape", "not committed"]);
+    expect(r.adjusted).toEqual([]);
     expect(git.dirty).toBe(true);
     expect(git.onRemote).toBe(false);
+  });
+
+  it("trims an end line slightly past the end of the file instead of dropping the reference", async () => {
+    const repo = await makeRepo(await tempDir());
+    const git = await readGitInfo(repo);
+    const tracked = await listTrackedFiles(repo);
+    const r = await verifyRefs({
+      refs: [
+        { path: "lib/option.js", startLine: 20, endLine: 41, why: "one past the end" },
+        { path: "lib/option.js", startLine: 20, endLine: 50, why: "far past the end" },
+      ],
+      srcPath: repo, repo: "tj/commander.js", sha: git.headSha, tracked,
+    });
+    expect(r.verified.map((v) => [v.startLine, v.endLine])).toEqual([[20, 40]]);
+    expect(r.verified[0]!.permalink).toMatch(/#L20-L40$/);
+    expect(r.adjusted[0]!.reason).toContain("trimmed to 40");
+    expect(r.dropped.map((d) => d.ref.why)).toEqual(["far past the end"]);
   });
 
   it("matches origin URLs", () => {
@@ -148,18 +166,45 @@ describe("code references", () => {
 });
 
 describe("merging duplicates", () => {
-  it("adds the meeting as a source and unions new details", () => {
-    const incoming = draft({
-      id: "d2",
-      content: { ...content, title: "Tell users which env var to set", acceptanceCriteria: ["error names the env variable when one is configured", "Works for options on parent commands"], dod: [5] },
-      sources: [{ meetingId: "m3", meetingTitle: "Sprint Review", quotes: [{ text: "tell you which environment variable" }] }],
-    });
-    const { merged, additions } = mergeDrafts(draft(), incoming);
+  const ref = (path: string, startLine: number, endLine: number) => ({
+    path, startLine, endLine, symbol: null, why: "x", permalink: `https://github.com/tj/commander.js/blob/sha/${path}#L${startLine}-L${endLine}`,
+  });
+  const existing = () => draft({ refs: [ref("lib/command.js", 100, 120)] });
+  const incoming = () => draft({
+    id: "d2",
+    content: { ...content, title: "Tell users which env var to set", acceptanceCriteria: ["error names the env variable when one is configured", "Works for options on parent commands"], dod: [5] },
+    sources: [{ meetingId: "m3", meetingTitle: "Sprint Review", quotes: [{ text: "tell you which environment variable" }] }],
+    refs: [ref("lib/command.js", 110, 130), ref("lib/option.js", 1, 5)],
+  });
+
+  it("lists only new details as candidates; overlapping code refs are not offered", () => {
+    const { candidates } = mergeDrafts(existing(), incoming());
+    expect(candidates.lists).toEqual({ acceptanceCriteria: ["Works for options on parent commands"] });
+    expect(candidates.refs.map((r) => r.path)).toEqual(["lib/option.js"]);
+    expect(candidates.count).toBe(2);
+  });
+
+  it("by default adds only the meeting and its quotes, not re-worded details", () => {
+    const { merged } = mergeDrafts(existing(), incoming());
     expect(merged.id).toBe("d1");
-    expect(merged.content.title).toBe(content.title);
+    expect(merged.content).toEqual(content);
+    expect(merged.refs).toHaveLength(1);
     expect(merged.sources.map((s) => s.meetingId)).toEqual(["m1", "m3"]);
-    expect(additions).toEqual({ acceptanceCriteria: ["Works for options on parent commands"] });
-    expect(merged.content.dod).toEqual([5, 7, 8, 11]);
+  });
+
+  it("adds exactly the details the reviewer picked", () => {
+    const picked = { acceptanceCriteria: ["Works for options on parent commands"], refs: [ref("lib/option.js", 1, 5).permalink] };
+    const { merged } = mergeDrafts(existing(), incoming(), picked);
+    expect(merged.content.acceptanceCriteria).toEqual([...content.acceptanceCriteria, "Works for options on parent commands"]);
+    expect(merged.refs.map((r) => r.path)).toEqual(["lib/command.js", "lib/option.js"]);
+    expect(merged.content.dod).toEqual(content.dod);
+  });
+
+  it("re-running the same meeting adds new quotes to that meeting instead of a second source", () => {
+    const again = draft({ id: "d3", sources: [{ meetingId: "m1", meetingTitle: "Planning", quotes: [{ text: "I'll take it" }, { text: "message only" }] }] });
+    const { merged } = mergeDrafts(existing(), again);
+    expect(merged.sources).toHaveLength(1);
+    expect(merged.sources[0]!.quotes.map((q) => q.text)).toEqual(["I'll take it", "message only"]);
   });
 });
 

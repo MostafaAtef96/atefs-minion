@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { loadConfig, type MinionConfig } from "../core/config.js";
-import { finalize, type FinalizeResult } from "../core/finalize.js";
+import { createInterface } from "node:readline/promises";
+import { finalize, removeDraft, type FinalizeResult } from "../core/finalize.js";
 import { InputError, readNotesFiles } from "../core/inputs.js";
 import { generate } from "../core/pipeline.js";
 import { Store } from "../core/store.js";
@@ -124,6 +125,25 @@ ledgerCmd
     const found = ledger.meetings[id] ?? ledger.drafts[id];
     if (!found) throw new Error(`No meeting or draft with id "${id}".`);
     console.log(JSON.stringify(found, null, 2));
+  });
+
+ledgerCmd
+  .command("remove <draftId>")
+  .description("remove a draft created by mistake (deletes its file and forgets it for duplicate checks)")
+  .option("-y, --yes", "do not ask for confirmation")
+  .action(async (draftId: string, opts: { yes?: boolean }) => {
+    const store = new Store(config().stateDir);
+    const draft = (await store.loadLedger()).drafts[draftId];
+    if (!draft) throw new Error(`No draft with id "${draftId}". See "minion ledger list".`);
+    if (!opts.yes) {
+      if (!process.stdin.isTTY) throw new Error("Add --yes to confirm when not running in a terminal.");
+      const rl = createInterface({ input: process.stdin, output: process.stdout });
+      const answer = (await rl.question(`Remove draft ${draftId} "${draft.content.title}"${draft.file ? ` and delete ${draft.file}` : ""}? [y/N] `)).trim().toLowerCase();
+      rl.close();
+      if (answer !== "y") return console.log("Nothing removed.");
+    }
+    const removed = await removeDraft(store, draftId);
+    console.log(`Removed "${removed.title}"${removed.file ? ` (${removed.file})` : ""}.`);
   });
 
 program.parseAsync().catch((e: unknown) => {

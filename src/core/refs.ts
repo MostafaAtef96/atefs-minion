@@ -3,6 +3,7 @@ import path from "node:path";
 import type { CodeRef, VerifiedRef } from "./schemas.js";
 
 export const MAX_REF_SPAN = 400;
+export const MAX_END_OVERSHOOT = 3;
 
 export function permalink(repo: string, sha: string, filePath: string, start: number, end: number): string {
   const anchor = start === end ? `L${start}` : `L${start}-L${end}`;
@@ -22,6 +23,7 @@ export function normalizeRefPath(srcPath: string, p: string): string | null {
 export interface RefCheckResult {
   verified: VerifiedRef[];
   dropped: { ref: CodeRef; reason: string }[];
+  adjusted: { ref: CodeRef; reason: string }[];
 }
 
 /**
@@ -37,6 +39,7 @@ export async function verifyRefs(opts: {
 }): Promise<RefCheckResult> {
   const verified: VerifiedRef[] = [];
   const dropped: RefCheckResult["dropped"] = [];
+  const adjusted: RefCheckResult["adjusted"] = [];
   const seen = new Set<string>();
   for (const ref of opts.refs) {
     const rel = normalizeRefPath(opts.srcPath, ref.path);
@@ -61,7 +64,13 @@ export async function verifyRefs(opts: {
       dropped.push({ ref, reason: "file not readable" });
       continue;
     }
-    const { startLine, endLine } = ref;
+    const { startLine } = ref;
+    let { endLine } = ref;
+    // Models sometimes count one or two lines past the end of a file: trim instead of dropping.
+    if (startLine <= lineCount && endLine > lineCount && endLine - lineCount <= MAX_END_OVERSHOOT) {
+      adjusted.push({ ref, reason: `end line ${endLine} trimmed to ${lineCount} (end of file)` });
+      endLine = lineCount;
+    }
     if (startLine > endLine || endLine > lineCount) {
       dropped.push({ ref, reason: `line range ${startLine}-${endLine} invalid (file has ${lineCount} lines)` });
       continue;
@@ -75,9 +84,10 @@ export async function verifyRefs(opts: {
     seen.add(key);
     verified.push({
       ...ref,
+      endLine,
       path: rel,
       permalink: permalink(opts.repo, opts.sha, rel, startLine, endLine),
     });
   }
-  return { verified, dropped };
+  return { verified, dropped, adjusted };
 }

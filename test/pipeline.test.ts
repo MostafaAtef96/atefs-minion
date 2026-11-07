@@ -3,7 +3,7 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { MinionConfig } from "../src/core/config.js";
-import { finalize } from "../src/core/finalize.js";
+import { finalize, removeDraft } from "../src/core/finalize.js";
 import { generate, MeetingAlreadyProcessedError } from "../src/core/pipeline.js";
 import type { PendingRun, ReviewDecision } from "../src/core/schemas.js";
 import { Store } from "../src/core/store.js";
@@ -125,8 +125,9 @@ describe("pipeline on the synthetic samples", () => {
     expect(repeated!.dedup).toMatchObject({ status: "duplicate", layer: "L3", duplicateOf: original.draftId });
     expect(fresh!.dedup.status).toBe("new");
 
+    const optionRef = repeated!.draft.refs.find((r) => r.path === "lib/option.js")!.permalink;
     const r3 = await finalize(m3.run, {
-      [repeated!.draft.id]: { action: "merge", into: original.draftId },
+      [repeated!.draft.id]: { action: "merge", into: original.draftId, additions: { acceptanceCriteria: ["Works for options on parent commands"], refs: [optionRef] } },
       [fresh!.draft.id]: { action: "approve" },
     }, { store, config });
     expect(r3.merged).toEqual([{ draftId: repeated!.draft.id, into: original.draftId, file: original.file }]);
@@ -135,7 +136,8 @@ describe("pipeline on the synthetic samples", () => {
     const md = await readFile(original.file, "utf8");
     expect(md).toContain("**Raised in:** Planning 2026-11-03");
     expect(md).toContain("**Raised in:** Sprint Review 2026-11-17");
-    expect(md).toContain("Works for options on parent commands");
+    expect(md).toContain("Works for options on parent commands"); // picked by the reviewer
+    expect(md).not.toContain("Error names the environment variable"); // offered but not picked
     expect(md).toContain('"meetings":["planning-2026-11-03","sprint-review-2026-11-17"]');
     expect(md).toContain("lib/option.js#L1-L5"); // new code ref from the second meeting
 
@@ -198,5 +200,22 @@ describe("forced re-run of a processed meeting", () => {
     expect(ledger.meetings["team-sync-2026-11-20"]!.drafts).toEqual([r1.written[0]!.draftId, d.id]);
     const manifest = JSON.parse(await readFile(path.join(config.outDir, "team-sync-2026-11-20", "manifest.json"), "utf8"));
     expect(manifest.drafts.map((x: { issue: { title: string } }) => x.issue.title)).toEqual(["Write release announcement post", "Announce v15"]);
+  });
+});
+
+describe("removing a draft created by mistake", () => {
+  it("deletes the file, forgets it for duplicate checks and rewrites the manifest", async () => {
+    const first = await runMeeting("Planning 2026-11-03", ["01-planning-2026-11-03.md"]);
+    const r = await finalize(first.run, approveAll(first.run), { store, config });
+    const victim = r.written[1]!;
+    const removed = await removeDraft(store, victim.draftId);
+    expect(removed.title).toBe(victim.title);
+    expect(existsSync(victim.file)).toBe(false);
+    const ledger = await store.loadLedger();
+    expect(ledger.drafts[victim.draftId]).toBeUndefined();
+    expect(ledger.meetings["planning-2026-11-03"]!.drafts).not.toContain(victim.draftId);
+    const manifest = JSON.parse(await readFile(path.join(config.outDir, "planning-2026-11-03", "manifest.json"), "utf8"));
+    expect(manifest.drafts.map((d: { draftId: string }) => d.draftId)).not.toContain(victim.draftId);
+    await expect(removeDraft(store, "nope")).rejects.toThrow(/No draft/);
   });
 });

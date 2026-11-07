@@ -87,7 +87,10 @@ Gemini reads code for every action, so a run takes a few minutes. The first real
 - `e`: edit it in your editor (Notepad on Windows, or `$EDITOR`)
 - `t`: switch between User Story and Task
 - `r`: reject it
-- `m`: merge it into an earlier draft (offered only when the draft looks like a duplicate)
+- When a draft is **already ticketed** (an earlier meeting raised the same action), the choices change:
+  - `m` (default): merge into the existing ticket. The new meeting and its quotes are always added. You also
+    get a numbered list of new details, and only the ones you pick are added (Enter = none, `a` = all, `1,3` = some).
+  - `n`: create a second ticket anyway. You are asked to confirm.
 
 Other commands:
 
@@ -98,6 +101,7 @@ minion review <meeting-id>       review them
 minion web [--port 4711]         local web form + review table (http://127.0.0.1:4711)
 minion ledger list               processed meetings and their drafts
 minion ledger show <id>          details of a meeting or draft
+minion ledger remove <draft-id>  remove a draft created by mistake (deletes its file; asks first)
 minion run … --force             process a meeting again
 ```
 
@@ -108,7 +112,9 @@ Run `minion web` and open the address it prints. In the form:
 1. Choose the exported notes file(s).
 2. Enter the meeting title, the repository, and the path to your local clone.
 3. Click **Generate drafts**.
-4. Each draft appears as an editable card. Approve, reject or merge each one, then click **Save decisions**.
+4. Each draft appears as an editable card. Approve or reject each one, then click **Save decisions**.
+   For a draft that is already ticketed, **Merge into existing ticket** is preselected. Tick any new details
+   you want added; **Create a new ticket anyway** asks for confirmation when you save.
 
 The server listens on `127.0.0.1` only.
 
@@ -140,7 +146,7 @@ Each draft:
 | L1 | The same meeting, or the same notes, processed twice. Refused unless `--force` is given. |
 | L2 | An action whose title is the same as an earlier draft's (after normalisation). |
 | L3 | The same action worded differently. Gemini compares it with earlier drafts for the same repository. |
-| L4 | **You decide** in the review. A merge adds the new meeting and its quotes to the existing draft and rewrites that draft's file. |
+| L4 | **You decide** in the review. A merge adds the new meeting and its quotes to the existing draft and rewrites that draft's file. New details (scope items, acceptance criteria, code links) are added only if you pick them, so the ticket doesn't fill up with re-worded copies. Code links that overlap ones already on the ticket are not offered. |
 
 ## Safety
 
