@@ -2,7 +2,7 @@
   "name": "atefs-minion",
   "version": "0.1.0",
   "description": "Atef's Minion: turns Gemini meeting notes into reviewed ticket drafts, driving Gemini CLI over ACP.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "type": "module",
   "bin": {
     "minion": "dist/cli/index.js"

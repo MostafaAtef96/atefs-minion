@@ -194,3 +194,8 @@ prompts/      system prompt and task prompts P1–P4
 samples/      synthetic meeting exports (see samples/README.md)
 test/         unit, ACP, pipeline, CLI and web tests
 ```
+
+## License
+
+[Apache License 2.0](LICENSE) — free to use, modify and share, including inside companies; keep the
+copyright and license notice (see [NOTICE](NOTICE)).
