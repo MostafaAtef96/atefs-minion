@@ -79,7 +79,7 @@ export function renderIssueBody(draft: Draft): string {
     ].join("\n");
   }
 
-  const flags = draft.flags.length ? `\n\n${draft.flags.map((f) => `> ⚠️ ${f}`).join("\n")}` : "";
+  const flags = draft.flags.length ? `\n\n${draft.flags.map((f) => `> **Note:** ${f}`).join("\n")}` : "";
   const meetingNames = [...new Set(draft.sources.map((s) => `*${s.meetingTitle}*`))].join(", ");
 
   return [
@@ -116,7 +116,7 @@ export function renderIssueBody(draft: Draft): string {
     code + flags,
     "",
     "---",
-    `🤖 Drafted by **${AGENT_NAME}** · Source: ${meetingNames}`,
+    `Drafted by **${AGENT_NAME}** · Source: ${meetingNames}`,
     renderMetadata(draft),
     "",
   ].join("\n");

@@ -1,4 +1,6 @@
-# 🤖 Atef's Minion
+<p align="center"><img src="assets/minion.svg" width="120" alt="Atef's Minion mascot"></p>
+
+# Atef's Minion
 
 Atef's Minion turns the notes and transcript that **Gemini in Google Meet** writes for a meeting into
 **reviewed ticket drafts** written in the team's *Standardized Ticket Format*.
@@ -136,7 +138,7 @@ Each draft:
   the exact commit and line ranges.
 - **Never invented:** a section the meeting didn't cover says *"To be defined during refinement"*.
   Story Points are never estimated and Sub-Tasks are never created.
-- **Signed:** a visible footer, `🤖 Drafted by Atef's Minion`, plus a hidden
+- **Signed:** a visible footer, `Drafted by Atef's Minion`, plus a hidden
   `<!-- atefs-minion:v1 {...} -->` block used for duplicate detection.
 
 ## Duplicate prevention

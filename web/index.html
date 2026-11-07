@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Atef's Minion</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 120 120&quot; role=&quot;img&quot; aria-label=&quot;Atef's Minion&quot;%3E %3Ctitle%3EAtef's Minion%3C/title%3E %3Cellipse cx=&quot;60&quot; cy=&quot;113&quot; rx=&quot;30&quot; ry=&quot;4&quot; fill=&quot;#000&quot; opacity=&quot;.12&quot;/%3E %3Cpath d=&quot;M60 6 v10&quot; stroke=&quot;#2f4ac0&quot; stroke-width=&quot;4&quot; stroke-linecap=&quot;round&quot;/%3E %3Ccircle cx=&quot;60&quot; cy=&quot;6&quot; r=&quot;5&quot; fill=&quot;#63e6be&quot;/%3E %3Crect x=&quot;20&quot; y=&quot;16&quot; width=&quot;80&quot; height=&quot;94&quot; rx=&quot;40&quot; fill=&quot;#3b5bdb&quot;/%3E %3Crect x=&quot;20&quot; y=&quot;16&quot; width=&quot;80&quot; height=&quot;94&quot; rx=&quot;40&quot; fill=&quot;url(#shine)&quot;/%3E %3Crect x=&quot;30&quot; y=&quot;30&quot; width=&quot;60&quot; height=&quot;42&quot; rx=&quot;21&quot; fill=&quot;#ffffff&quot;/%3E %3Ccircle cx=&quot;48&quot; cy=&quot;49&quot; r=&quot;6.5&quot; fill=&quot;#1d2330&quot;/%3E %3Ccircle cx=&quot;72&quot; cy=&quot;49&quot; r=&quot;6.5&quot; fill=&quot;#1d2330&quot;/%3E %3Ccircle cx=&quot;50.2&quot; cy=&quot;46.8&quot; r=&quot;2.2&quot; fill=&quot;#fff&quot;/%3E %3Ccircle cx=&quot;74.2&quot; cy=&quot;46.8&quot; r=&quot;2.2&quot; fill=&quot;#fff&quot;/%3E %3Cpath d=&quot;M51 60 q9 7.5 18 0&quot; stroke=&quot;#1d2330&quot; stroke-width=&quot;3.2&quot; fill=&quot;none&quot; stroke-linecap=&quot;round&quot;/%3E %3Ccircle cx=&quot;38&quot; cy=&quot;59&quot; r=&quot;3.2&quot; fill=&quot;#ff8fab&quot; opacity=&quot;.55&quot;/%3E %3Ccircle cx=&quot;82&quot; cy=&quot;59&quot; r=&quot;3.2&quot; fill=&quot;#ff8fab&quot; opacity=&quot;.55&quot;/%3E %3Cg transform=&quot;rotate(-8 80 92)&quot;%3E %3Crect x=&quot;62&quot; y=&quot;74&quot; width=&quot;34&quot; height=&quot;38&quot; rx=&quot;5&quot; fill=&quot;#ffffff&quot; stroke=&quot;#1d2330&quot; stroke-width=&quot;3&quot;/%3E %3Crect x=&quot;72&quot; y=&quot;70&quot; width=&quot;14&quot; height=&quot;8&quot; rx=&quot;3&quot; fill=&quot;#f59f00&quot; stroke=&quot;#1d2330&quot; stroke-width=&quot;2.5&quot;/%3E %3Cpath d=&quot;M68 87 l3.5 3.5 l6 -7&quot; stroke=&quot;#2b8a3e&quot; stroke-width=&quot;3&quot; fill=&quot;none&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;/%3E %3Cpath d=&quot;M81 87 h9&quot; stroke=&quot;#adb5bd&quot; stroke-width=&quot;3&quot; stroke-linecap=&quot;round&quot;/%3E %3Cpath d=&quot;M68 99 l3.5 3.5 l6 -7&quot; stroke=&quot;#2b8a3e&quot; stroke-width=&quot;3&quot; fill=&quot;none&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;/%3E %3Cpath d=&quot;M81 99 h9&quot; stroke=&quot;#adb5bd&quot; stroke-width=&quot;3&quot; stroke-linecap=&quot;round&quot;/%3E %3C/g%3E %3Cpath d=&quot;M26 82 q-10 6 -6 16&quot; stroke=&quot;#2f4ac0&quot; stroke-width=&quot;7&quot; fill=&quot;none&quot; stroke-linecap=&quot;round&quot;/%3E %3Cdefs%3E %3ClinearGradient id=&quot;shine&quot; x1=&quot;0&quot; y1=&quot;0&quot; x2=&quot;1&quot; y2=&quot;1&quot;%3E %3Cstop offset=&quot;0&quot; stop-color=&quot;#fff&quot; stop-opacity=&quot;.18&quot;/%3E %3Cstop offset=&quot;.5&quot; stop-color=&quot;#fff&quot; stop-opacity=&quot;0&quot;/%3E %3C/linearGradient%3E %3C/defs%3E %3C/svg%3E">
 <style>
   :root {
     --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #5d6676; --border: #d9dde4;
@@ -19,6 +20,8 @@
   body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
   header { padding: 16px 24px; border-bottom: 1px solid var(--border); background: var(--panel); display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
   header h1 { margin: 0; font-size: 20px; }
+  header .logo { width: 34px; height: 34px; align-self: center; }
+  header .logo svg { width: 100%; height: 100%; display: block; }
   header span { color: var(--muted); }
   main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 64px; }
   section { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
@@ -58,7 +61,7 @@
 </style>
 </head>
 <body>
-<header><h1>🤖 Atef's Minion</h1><span>meeting notes → ticket drafts</span></header>
+<header><span class="logo" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" > <title>Atef's Minion</title> <ellipse cx="60" cy="113" rx="30" ry="4" fill="#000" opacity=".12"/> <path d="M60 6 v10" stroke="#2f4ac0" stroke-width="4" stroke-linecap="round"/> <circle cx="60" cy="6" r="5" fill="#63e6be"/> <rect x="20" y="16" width="80" height="94" rx="40" fill="#3b5bdb"/> <rect x="20" y="16" width="80" height="94" rx="40" fill="url(#shine)"/> <rect x="30" y="30" width="60" height="42" rx="21" fill="#ffffff"/> <circle cx="48" cy="49" r="6.5" fill="#1d2330"/> <circle cx="72" cy="49" r="6.5" fill="#1d2330"/> <circle cx="50.2" cy="46.8" r="2.2" fill="#fff"/> <circle cx="74.2" cy="46.8" r="2.2" fill="#fff"/> <path d="M51 60 q9 7.5 18 0" stroke="#1d2330" stroke-width="3.2" fill="none" stroke-linecap="round"/> <circle cx="38" cy="59" r="3.2" fill="#ff8fab" opacity=".55"/> <circle cx="82" cy="59" r="3.2" fill="#ff8fab" opacity=".55"/> <g transform="rotate(-8 80 92)"> <rect x="62" y="74" width="34" height="38" rx="5" fill="#ffffff" stroke="#1d2330" stroke-width="3"/> <rect x="72" y="70" width="14" height="8" rx="3" fill="#f59f00" stroke="#1d2330" stroke-width="2.5"/> <path d="M68 87 l3.5 3.5 l6 -7" stroke="#2b8a3e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/> <path d="M81 87 h9" stroke="#adb5bd" stroke-width="3" stroke-linecap="round"/> <path d="M68 99 l3.5 3.5 l6 -7" stroke="#2b8a3e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/> <path d="M81 99 h9" stroke="#adb5bd" stroke-width="3" stroke-linecap="round"/> </g> <path d="M26 82 q-10 6 -6 16" stroke="#2f4ac0" stroke-width="7" fill="none" stroke-linecap="round"/> <defs> <linearGradient id="shine" x1="0" y1="0" x2="1" y2="1"> <stop offset="0" stop-color="#fff" stop-opacity=".18"/> <stop offset=".5" stop-color="#fff" stop-opacity="0"/> </linearGradient> </defs> </svg></span><h1>Atef's Minion</h1><span>meeting notes → ticket drafts</span></header>
 <main>
   <section id="new-run">
     <h2>New meeting</h2>
@@ -161,7 +164,7 @@ $("start").addEventListener("click", async () => {
       if (job.status === "done") { await loadPending(); await openReview(job.meetingId); break; }
     }
   } catch (e) {
-    progress.textContent += `\n✖ ${e.message}`;
+    progress.textContent += `\nError: ${e.message}`;
   } finally {
     $("start").disabled = false;
   }
@@ -228,7 +231,7 @@ function card(p, index, total, dup) {
   root.append(el("div", { class: "card-head" },
     el("h3", {}, `${index + 1}/${total} · ${c.title}`),
     el("span", { class: "badge" }, c.type === "Task" ? "Task" : "User Story")));
-  for (const f of d.flags) root.append(el("div", { class: "notice" }, `⚠️ ${f}`));
+  for (const f of d.flags) root.append(el("div", { class: "notice" }, f));
   let merge = null;
   if (dup) {
     const how = p.dedup.layer === "L2" ? "same title" : "same work, found by Gemini";
@@ -247,7 +250,7 @@ function card(p, index, total, dup) {
     }
     merge.append(el("details", {}, el("summary", {}, "Show the existing ticket"), el("pre", {}, dup.existingMarkdown)));
     root.append(el("div", { class: "notice dup" },
-      `🔁 Already ticketed (${how}): “${dup.title}”, raised in ${dup.meetings.join(", ")}. `,
+      el("strong", {}, "Already ticketed "), `(${how}): “${dup.title}”, raised in ${dup.meetings.join(", ")}. `,
       p.dedup.reason && p.dedup.layer !== "L2" ? el("span", { class: "hint" }, p.dedup.reason) : null));
   }
   root.append(...[decision, merge, fields].filter(Boolean));
@@ -271,7 +274,7 @@ async function openReview(meetingId) {
   $("result").replaceChildren();
   $("finalize").disabled = false;
   $("review-title").textContent = `Review: ${run.meetingTitle} → ${run.repo}`;
-  $("review-warnings").replaceChildren(...run.warnings.map((w) => el("div", { class: "notice" }, `⚠️ ${w}`)));
+  $("review-warnings").replaceChildren(...run.warnings.map((w) => el("div", { class: "notice" }, w)));
   $("review-skipped").replaceChildren(...(run.skipped.length ? [el("details", {}, el("summary", {}, `${run.skipped.length} item(s) not drafted (discussion only)`),
     el("ul", { class: "plain" }, run.skipped.map((s) => el("li", {}, s.title))))] : []));
   $("cards").replaceChildren(...(run.drafts.length
@@ -302,15 +305,15 @@ $("finalize").addEventListener("click", async () => {
     $("finalize").disabled = true;
     const r = await api(`/api/pending/${encodeURIComponent(CURRENT.run.meetingId)}/finalize`, { decisions });
     out.replaceChildren(
-      ...r.written.map((w) => el("div", { class: "ok" }, `✅ ${w.title} → ${w.file}`)),
-      ...r.merged.map((m) => el("div", { class: "ok" }, `🔁 merged into draft ${m.into}${m.file ? ` → ${m.file}` : ""}`)),
-      ...r.rejected.map((t) => el("div", { class: "hint" }, `✖ rejected: ${t}`)),
+      ...r.written.map((w) => el("div", { class: "ok" }, `Saved: ${w.title} → ${w.file}`)),
+      ...r.merged.map((m) => el("div", { class: "ok" }, `Merged into existing draft ${m.into}${m.file ? ` → ${m.file}` : ""}`)),
+      ...r.rejected.map((t) => el("div", { class: "hint" }, `Rejected: ${t}`)),
       ...(r.outDir ? [el("p", {}, `Drafts and manifest.json: ${r.outDir}`)] : []),
     );
     await loadPending();
   } catch (e) {
     $("finalize").disabled = false;
-    out.replaceChildren(el("div", { class: "bad" }, `✖ ${e.message}`));
+    out.replaceChildren(el("div", { class: "bad" }, `Error: ${e.message}`));
   }
 });
 

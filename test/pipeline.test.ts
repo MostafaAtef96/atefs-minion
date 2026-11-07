@@ -74,7 +74,7 @@ describe("pipeline on the synthetic samples", () => {
     ]);
     const md = await readFile(result.written[0]!.file, "utf8");
     expect(md).toMatch(/^# Mention env variable in missing mandatory option error/);
-    expect(md).toContain("🤖 Drafted by **Atef's Minion**");
+    expect(md).toContain("\n---\nDrafted by **Atef's Minion**");
     expect(md).toContain("<!-- atefs-minion:v1 ");
 
     const manifest = JSON.parse(await readFile(path.join(outDir, "manifest.json"), "utf8"));
