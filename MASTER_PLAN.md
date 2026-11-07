@@ -87,7 +87,7 @@ Doing this by hand is slow, actions get missed, tickets end up vague, and the sa
 
 ### 4.2 Technology
 - **TypeScript on Node.js 20+.** Gemini CLI requires this too, so it is already installed.
-- **Official ACP TypeScript SDK** (`@agentclientprotocol/sdk` 2.4.0) to talk to Gemini CLI. Gemini CLI is started with **`--acp`**, checked against `@google/gemini-cli` 0.67.0. The older `--experimental-acp` flag is deprecated, and `geminiArgs` in the config lets you switch to it.
+- **Official ACP TypeScript SDK** (`@agentclientprotocol/sdk` 2.4.0) to talk to Gemini CLI. Gemini CLI is started with **`--acp`**, checked against `@google/gemini-cli` 0.66.0 (your version) and 0.67.0. The older `--experimental-acp` flag is deprecated, and `geminiArgs` in the config lets you switch to it.
 - `zod` for schemas, `commander` for the command-line tool, and a small built-in Node HTTP server plus one static page for the web form, with no heavy framework.
 - `vitest` for tests, using a **fake ACP agent** with scripted replies so the tests run without Gemini or a network.
 
