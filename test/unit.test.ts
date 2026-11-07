@@ -1,0 +1,185 @@
+import { writeFile } from "node:fs/promises";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+import { decidePermission } from "../src/control/permissions.js";
+import { extractJson } from "../src/control/json.js";
+import { loadConfig } from "../src/core/config.js";
+import { mergeDrafts } from "../src/core/finalize.js";
+import { originMatchesRepo, listTrackedFiles, readGitInfo } from "../src/core/git.js";
+import { validateInputs } from "../src/core/inputs.js";
+import { permalink, verifyRefs } from "../src/core/refs.js";
+import { AGENT_NAME, parseEditable, renderDraftFile, renderEditable } from "../src/core/render.js";
+import type { Draft, TicketContent } from "../src/core/schemas.js";
+import { fingerprint, normalizeTitle, slugify } from "../src/core/text.js";
+import { makeRepo, tempDir } from "./helpers.js";
+
+const content: TicketContent = {
+  title: "Mention env variable in missing mandatory option error",
+  type: "Task",
+  objective: "Problem: users are not told about the env variable. Proposed Solution: name it in the error.",
+  inScope: ["Error message of missingMandatoryOptionValue"],
+  outOfScope: ["Changing the error code"],
+  dependencies: [],
+  acceptanceCriteria: ["Error names the env variable when one is configured"],
+  dod: [7, 8, 11],
+  deliverables: ["Merged PR with tests"],
+};
+
+function draft(over: Partial<Draft> = {}): Draft {
+  return {
+    id: "d1",
+    repo: "tj/commander.js",
+    commitSha: "a".repeat(40),
+    content,
+    owner: "Lena",
+    due: null,
+    sources: [{ meetingId: "m1", meetingTitle: "Planning", quotes: [{ text: "I'll take it", speaker: "Lena", timestamp: "00:02:10" }] }],
+    refs: [],
+    fingerprint: fingerprint("tj/commander.js", content.title),
+    flags: [],
+    file: null,
+    ...over,
+  };
+}
+
+describe("text helpers", () => {
+  it("slugifies meeting titles", () => {
+    expect(slugify("Sprint Review — 2026-11-05!")).toBe("sprint-review-2026-11-05");
+    expect(slugify("   ")).toBe("untitled");
+    expect(slugify("Mention env variable in missing mandatory option error", 50)).toBe("mention-env-variable-in-missing-mandatory-option");
+    expect(slugify("x".repeat(80), 10)).toBe("xxxxxxxxxx");
+  });
+  it("normalises titles order- and stopword-insensitively", () => {
+    expect(normalizeTitle("Add the JSON help output")).toBe(normalizeTitle("JSON help output: add"));
+    expect(fingerprint("A/B", "Fix login")).toBe(fingerprint("a/b", "fix   LOGIN!"));
+  });
+});
+
+describe("extractJson", () => {
+  it("prefers the last fenced block", () => {
+    expect(extractJson('text ```json\n{"a":1}\n``` more ```json\n{"a":2}\n```')).toEqual({ a: 2 });
+  });
+  it("falls back to outer braces", () => {
+    expect(extractJson('Sure! {"x": [1]} done')).toEqual({ x: [1] });
+  });
+  it("throws without JSON", () => {
+    expect(() => extractJson("no json here")).toThrow();
+  });
+});
+
+describe("read-only permission policy", () => {
+  const options = [
+    { optionId: "y", name: "Allow", kind: "allow_once" as const },
+    { optionId: "n", name: "Reject", kind: "reject_once" as const },
+  ];
+  const req = (kind: string | undefined) => ({
+    sessionId: "s",
+    toolCall: { toolCallId: "t", kind: kind as never },
+    options,
+  });
+  it.each(["read", "search", "think"])("allows %s", (kind) => {
+    expect(decidePermission(req(kind)).response).toEqual({ outcome: { outcome: "selected", optionId: "y" } });
+  });
+  it.each(["edit", "delete", "move", "execute", "fetch", "other", undefined])("denies %s", (kind) => {
+    const d = decidePermission(req(kind));
+    expect(d.allowed).toBe(false);
+    expect(d.response).toEqual({ outcome: { outcome: "selected", optionId: "n" } });
+  });
+  it("cancels when no reject option exists", () => {
+    const d = decidePermission({ sessionId: "s", toolCall: { toolCallId: "t", kind: "edit" }, options: [options[0]!] });
+    expect(d.response).toEqual({ outcome: { outcome: "cancelled" } });
+  });
+});
+
+describe("rendering", () => {
+  it("follows the Standardized Ticket Format and is signed", () => {
+    const md = renderDraftFile(draft());
+    for (const h of ["## Objective", "## In Scope", "## Out of Scope", "## Dependencies", "## Acceptance Criteria", "## Definition of Done", "## Deliverable", "## Source & Context"]) {
+      expect(md).toContain(h);
+    }
+    expect(md).toContain(`Drafted by **${AGENT_NAME}**`);
+    expect(md).toMatch(/<!-- atefs-minion:v1 \{"fingerprint":"[0-9a-f]{16}","meetings":\["m1"\],"draft_id":"d1"\} -->/);
+    expect(md).toContain("- [ ] 7. Software Detailed Design and Unit Construction");
+    expect(md).toContain("_To be defined during refinement_"); // empty Dependencies
+    expect(md).toContain('> "I\'ll take it" — Lena, 00:02:10');
+    expect(md).toContain("_none identified_");
+    expect(md).not.toMatch(/Story Points:\*\* \d/);
+  });
+
+  it("round-trips the editable format", () => {
+    const edited = renderEditable(content).replace("Type: Task", "Type: UserStory").replace("- [ ] 5. Software Requirements", "- [x] 5. Software Requirements");
+    const parsed = parseEditable(edited);
+    expect(parsed).toEqual({ ...content, type: "UserStory", dod: [5, 7, 8, 11] });
+  });
+});
+
+describe("code references", () => {
+  it("builds permalinks", () => {
+    expect(permalink("o/r", "abc", "lib/a b.js", 3, 3)).toBe("https://github.com/o/r/blob/abc/lib/a%20b.js#L3");
+    expect(permalink("o/r", "abc", "lib/a.js", 3, 9)).toBe("https://github.com/o/r/blob/abc/lib/a.js#L3-L9");
+  });
+
+  it("drops hallucinated or invalid references", async () => {
+    const repo = await makeRepo(await tempDir());
+    await writeFile(path.join(repo, "untracked.js"), "x\n");
+    const git = await readGitInfo(repo);
+    const tracked = await listTrackedFiles(repo);
+    const refs = [
+      { path: "lib/command.js", startLine: 10, endLine: 20, why: "ok" },
+      { path: "./lib\\help.js", startLine: 5, endLine: 5, why: "ok, odd path" },
+      { path: "lib/missing.js", startLine: 1, endLine: 2, why: "hallucinated" },
+      { path: "lib/option.js", startLine: 30, endLine: 99, why: "out of range" },
+      { path: "../etc/passwd", startLine: 1, endLine: 1, why: "escape" },
+      { path: "untracked.js", startLine: 1, endLine: 1, why: "not committed" },
+    ];
+    const r = await verifyRefs({ refs, srcPath: repo, repo: "tj/commander.js", sha: git.headSha, tracked });
+    expect(r.verified.map((v) => v.path)).toEqual(["lib/command.js", "lib/help.js"]);
+    expect(r.verified[0]!.permalink).toBe(`https://github.com/tj/commander.js/blob/${git.headSha}/lib/command.js#L10-L20`);
+    expect(r.dropped.map((d) => d.ref.why)).toEqual(["hallucinated", "out of range", "escape", "not committed"]);
+    expect(git.dirty).toBe(true);
+    expect(git.onRemote).toBe(false);
+  });
+
+  it("matches origin URLs", () => {
+    expect(originMatchesRepo("https://github.com/tj/commander.js.git", "tj/commander.js")).toBe(true);
+    expect(originMatchesRepo("git@github.com:tj/commander.js.git", "TJ/Commander.js")).toBe(true);
+    expect(originMatchesRepo("https://github.com/other/repo", "tj/commander.js")).toBe(false);
+  });
+});
+
+describe("merging duplicates", () => {
+  it("adds the meeting as a source and unions new details", () => {
+    const incoming = draft({
+      id: "d2",
+      content: { ...content, title: "Tell users which env var to set", acceptanceCriteria: ["error names the env variable when one is configured", "Works for options on parent commands"], dod: [5] },
+      sources: [{ meetingId: "m3", meetingTitle: "Sprint Review", quotes: [{ text: "tell you which environment variable" }] }],
+    });
+    const { merged, additions } = mergeDrafts(draft(), incoming);
+    expect(merged.id).toBe("d1");
+    expect(merged.content.title).toBe(content.title);
+    expect(merged.sources.map((s) => s.meetingId)).toEqual(["m1", "m3"]);
+    expect(additions).toEqual({ acceptanceCriteria: ["Works for options on parent commands"] });
+    expect(merged.content.dod).toEqual([5, 7, 8, 11]);
+  });
+});
+
+describe("inputs and config", () => {
+  it("validates inputs and derives meeting id + hash", async () => {
+    const repo = await makeRepo(await tempDir());
+    const v = await validateInputs({ notes: [{ name: "n.md", content: "hello" }], srcPath: repo, meetingTitle: " Planning 2026 ", repo: "https://github.com/tj/commander.js.git" });
+    expect(v.meetingId).toBe("planning-2026");
+    expect(v.repo).toBe("tj/commander.js");
+    await expect(validateInputs({ notes: [], srcPath: "/nope", meetingTitle: "", repo: "bad" })).rejects.toThrow(/notes[\s\S]*title[\s\S]*owner\/name[\s\S]*not a directory/);
+  });
+
+  it("loads config files and rejects invalid ones", async () => {
+    const dir = await tempDir();
+    expect(loadConfig(undefined, dir).geminiArgs).toEqual(["--acp"]);
+    await writeFile(path.join(dir, "minion.config.json"), JSON.stringify({ defaultRepo: "o/r", outDir: "drafts" }));
+    const cfg = loadConfig(undefined, dir);
+    expect(cfg.defaultRepo).toBe("o/r");
+    expect(cfg.outDir).toBe(path.join(dir, "drafts"));
+    await writeFile(path.join(dir, "bad.json"), JSON.stringify({ maxRetries: 99 }));
+    expect(() => loadConfig("bad.json", dir)).toThrow(/maxRetries/);
+  });
+});
