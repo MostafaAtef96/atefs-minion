@@ -159,6 +159,8 @@ describe("pipeline on the synthetic samples", () => {
   it("retries invalid JSON and falls back to an empty, flagged draft when retries run out", async () => {
     const retried = await runMeeting("Team sync 2026-11-20", ["04-team-sync-2026-11-20.md"], scenario({ p3Failures: 1 }));
     expect(retried.responder.calls["retry"]).toBe(1);
+    const retryLog = await readFile(store.pendingLogFile(retried.run.meetingId), "utf8");
+    expect(retryLog).toContain("PROMPT P3 (RETRY 1) =====\nYour previous reply could not be used");
     expect(retried.run.drafts[0]!.draft.flags).toEqual([]);
     expect(retried.run.drafts[0]!.draft.content.objective).toContain("Problem:");
 

@@ -19,6 +19,14 @@ const app = agent({ name: "fake-gemini" })
     const promptText = params.prompt.map((b) => (b.type === "text" ? b.text : "")).join("");
     if (promptText.includes("HANG")) return new Promise(() => {});
     if (process.env.FAKE_SCENARIO) {
+      await client.request(methods.client.session.requestPermission, {
+        sessionId: params.sessionId,
+        toolCall: { toolCallId: "w1", kind: "edit", title: "WriteFile notes.md" },
+        options: [
+          { optionId: "yes", name: "Allow", kind: "allow_once" },
+          { optionId: "no", name: "Reject", kind: "reject_once" },
+        ],
+      });
       await client.notify(methods.client.session.update, {
         sessionId: params.sessionId,
         update: { sessionUpdate: "tool_call", toolCallId: "t1", title: "ReadFile lib/command.js", kind: "read" },

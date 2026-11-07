@@ -36,6 +36,12 @@ describe("minion CLI (built) with a fake Gemini CLI over stdio", () => {
     expect(r.stderr).toContain("ReadFile lib/command.js");
     expect(existsSync(path.join(dir, "out"))).toBe(false);
 
+    const runLog = await readFile(path.join(dir, "state", "pending", "team-sync-2026-11-20.log"), "utf8");
+    expect(runLog).toContain("EVENT =====\ntool_call: ReadFile lib/command.js (read)");
+    expect(runLog).toContain("EVENT =====\npermission DENIED: WriteFile notes.md (edit)");
+    expect(runLog).toMatch(/SUMMARY =====\nFinished in \d+ s: 1 draft\(s\), 0 not drafted\./);
+    expect(r.stderr).toContain("denied (read-only policy): WriteFile notes.md");
+
     const pending = JSON.parse(await readFile(path.join(dir, "state", "pending", "team-sync-2026-11-20.json"), "utf8"));
     expect(pending.drafts[0].draft.refs[0].permalink).toContain("https://github.com/tj/commander.js/blob/");
 

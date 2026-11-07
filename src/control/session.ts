@@ -5,7 +5,13 @@ export interface AgentSession {
   close(): Promise<void>;
 }
 
+/** Optional per-session observer, e.g. to write tool activity and permission decisions to run.log. */
+export interface AgentObserver {
+  /** Tool calls and permission decisions (allowed/denied) reported during the session. */
+  onEvent?: (text: string) => void;
+}
+
 export interface AgentFactory {
   /** Open a session whose working directory is the source code path. */
-  open(cwd: string): Promise<AgentSession>;
+  open(cwd: string, observer?: AgentObserver): Promise<AgentSession>;
 }

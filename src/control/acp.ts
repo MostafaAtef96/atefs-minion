@@ -12,7 +12,7 @@ import {
   type Stream,
 } from "@agentclientprotocol/sdk";
 import { decidePermission } from "./permissions.js";
-import type { AgentFactory, AgentSession } from "./session.js";
+import type { AgentFactory, AgentObserver, AgentSession } from "./session.js";
 
 export interface AcpSessionOptions {
   cwd: string;
@@ -141,7 +141,7 @@ export interface GeminiOptions {
 export class GeminiAgentFactory implements AgentFactory {
   constructor(private readonly options: GeminiOptions) {}
 
-  async open(cwd: string): Promise<AgentSession> {
+  async open(cwd: string, observer?: AgentObserver): Promise<AgentSession> {
     const { command, model } = this.options;
     const args = [...this.options.args, ...(model ? ["-m", model] : [])];
     const isWin = process.platform === "win32";
@@ -189,7 +189,11 @@ export class GeminiAgentFactory implements AgentFactory {
 
     let session: AgentSession & { connection: ClientConnection };
     try {
-      session = await Promise.race([openAcpSession(stream, { cwd, ...this.options }), exited]).catch(explain);
+      const onTranscript: AcpSessionOptions["onTranscript"] = (role, text) => {
+        this.options.onTranscript?.(role, text);
+        if (role === "event") observer?.onEvent?.(text);
+      };
+      session = await Promise.race([openAcpSession(stream, { cwd, ...this.options, onTranscript }), exited]).catch(explain);
     } catch (e) {
       killTree(child);
       throw e;

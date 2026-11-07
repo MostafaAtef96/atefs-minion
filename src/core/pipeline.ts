@@ -108,16 +108,16 @@ export async function generate(rawInputs: RunInputs, deps: PipelineDeps): Promis
 
   // ---- Step 1: init -------------------------------------------------------------------
   progress("Starting Gemini CLI…");
-  const session = await deps.agents.open(srcPath);
-  const ask = <S extends z.ZodType>(prompt: string, schema: S, label: string) => {
-    log(`prompt ${label}`, prompt);
-    return askJson(loggingSession(session, (r) => log(`response ${label}`, r)), prompt, schema, config.maxRetries);
-  };
+  const startedAt = Date.now();
+  const session = await deps.agents.open(srcPath, { onEvent: (text) => log("event", text) });
+  // Every turn (including retries after invalid JSON) is logged with its task label.
+  const ask = <S extends z.ZodType>(prompt: string, schema: S, label: string) =>
+    askJson(loggingSession(session, label, log), prompt, schema, config.maxRetries);
 
   const drafts: PendingDraft[] = [];
   const skipped: SkippedAction[] = [];
   try {
-    await loggingSession(session, (r) => log("response system", r)).prompt(renderPrompt("system", { repo }));
+    await loggingSession(session, "system", log).prompt(renderPrompt("system", { repo }));
 
     // ---- Step 2: extract ------------------------------------------------------------------
     progress("Extracting action items…");
@@ -212,6 +212,7 @@ export async function generate(rawInputs: RunInputs, deps: PipelineDeps): Promis
     }
   } finally {
     await session.close().catch(() => {});
+    log("summary", `Finished in ${formatDuration(Date.now() - startedAt)}: ${drafts.length} draft(s), ${skipped.length} not drafted.`);
     await logChain;
   }
 
@@ -229,19 +230,28 @@ export async function generate(rawInputs: RunInputs, deps: PipelineDeps): Promis
     warnings,
   };
   await store.savePending(run);
-  progress(`${drafts.length} draft(s) ready for review.`);
+  progress(`${drafts.length} draft(s) ready for review (${formatDuration(Date.now() - startedAt)}).`);
   return run;
 }
 
-function loggingSession(session: AgentSession, onReply: (reply: string) => void): AgentSession {
+function loggingSession(session: AgentSession, label: string, log: (role: string, text: string) => void): AgentSession {
+  let turn = 0;
   return {
     prompt: async (text) => {
+      turn += 1;
+      const tag = turn === 1 ? label : `${label} (retry ${turn - 1})`;
+      log(`prompt ${tag}`, text);
       const reply = await session.prompt(text);
-      onReply(reply);
+      log(`response ${tag}`, reply);
       return reply;
     },
     close: () => session.close(),
   };
+}
+
+export function formatDuration(ms: number): string {
+  const s = Math.round(ms / 1000);
+  return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, "0")} s`;
 }
 
 function fallbackContent(action: ExtractedAction): TicketContent {

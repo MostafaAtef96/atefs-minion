@@ -79,7 +79,9 @@ minion run --notes "C:\Users\me\Downloads\Sprint Review.md" `
            --repo my-org/my-repo
 ```
 
-The command shows progress, then takes you through the drafts one by one:
+The command shows progress, then takes you through the drafts one by one.
+Gemini reads code for every action, so a run takes a few minutes. The first real run, a meeting with
+3 actions, took about 5½ minutes.
 
 - `a`: approve the draft
 - `e`: edit it in your editor (Notepad on Windows, or `$EDITOR`)
@@ -116,7 +118,8 @@ The server listens on `127.0.0.1` only.
 out/<meeting-id>/
   01-<title>.md     draft: "# Title" + body in the Standardized Ticket Format, signed by Atef's Minion
   manifest.json     machine-readable drafts (issue title/body/labels) — input for MVP2
-  run.log           prompts and answers for traceability (turn off with --no-log)
+  run.log           every prompt and answer (including retries), each file Gemini read or searched,
+                    every tool the app allowed or denied, and the total run time (turn off with --no-log)
 ```
 
 Each draft:
@@ -167,7 +170,9 @@ Each draft:
 6. Run meeting 1 again with no other change:
    - [ ] It is refused as already processed.
 7. Repeat step 3 with `minion web`.
-8. If anything fails, keep `run.log` and the console output. With them we can tune the prompts in `prompts/`.
+8. If anything fails or a draft looks wrong, keep `run.log` and the console output. They show what Gemini
+   read, what it answered and what was denied, so we can tune the prompts in `prompts/`. Remove anything
+   confidential from them before sharing.
 
 ## Development
 
