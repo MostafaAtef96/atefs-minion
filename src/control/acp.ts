@@ -164,10 +164,23 @@ export class GeminiAgentFactory implements AgentFactory {
         );
       });
       child.once("exit", (code) => {
-        reject(new Error(`Gemini CLI exited (code ${code}).${stderrTail ? `\n${stderrTail.trim()}` : ""}`));
+        const notFound = /not recognized|not found|cannot find/i.test(stderrTail);
+        reject(
+          new Error(
+            notFound
+              ? `Cannot start "${command}". Install Gemini CLI (npm install -g @google/gemini-cli) or set "geminiCommand" in minion.config.json.`
+              : `Gemini CLI exited (code ${code}).${stderrTail ? `\n${stderrTail.trim()}` : ""}`,
+          ),
+        );
       });
     });
     exited.catch(() => {}); // observed below
+    child.stdin?.on("error", () => {}); // EPIPE when the process dies; reported via `exited`
+    // When the connection breaks because the process died, report the process error (more useful).
+    const explain = async (e: unknown): Promise<never> => {
+      const exitError = await Promise.race([exited.catch((x: Error) => x), new Promise<null>((r) => setTimeout(() => r(null), 1500))]);
+      throw exitError ?? e;
+    };
 
     const stream = ndJsonStream(
       Writable.toWeb(child.stdin!) as WritableStream<Uint8Array>,
@@ -176,13 +189,13 @@ export class GeminiAgentFactory implements AgentFactory {
 
     let session: AgentSession & { connection: ClientConnection };
     try {
-      session = await Promise.race([openAcpSession(stream, { cwd, ...this.options }), exited]);
+      session = await Promise.race([openAcpSession(stream, { cwd, ...this.options }), exited]).catch(explain);
     } catch (e) {
       killTree(child);
       throw e;
     }
     return {
-      prompt: (text) => Promise.race([session.prompt(text), exited]),
+      prompt: (text) => Promise.race([session.prompt(text), exited]).catch(explain),
       close: async () => {
         await session.close();
         killTree(child);

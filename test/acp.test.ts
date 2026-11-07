@@ -46,7 +46,7 @@ describe("Gemini CLI over ACP (fake agent on stdio)", () => {
 
   it("explains how to install Gemini CLI when the command is missing", async () => {
     const f = new GeminiAgentFactory({ command: "definitely-not-gemini-xyz", args: ["--acp"], timeoutMs: 5000 });
-    await expect(f.open(await tempDir())).rejects.toThrow(process.platform === "win32" ? /exited|Cannot start/ : /Install Gemini CLI/);
+    await expect(f.open(await tempDir())).rejects.toThrow(/Install Gemini CLI/);
   });
 });
 

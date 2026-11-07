@@ -11,7 +11,8 @@ const cache = new Map<PromptName, string>();
 export function loadPrompt(name: PromptName): string {
   let text = cache.get(name);
   if (text === undefined) {
-    text = readFileSync(path.join(PROMPT_DIR, `${name}.md`), "utf8");
+    // Normalise line endings: prompts edited on Windows (CRLF) must behave the same.
+    text = readFileSync(path.join(PROMPT_DIR, `${name}.md`), "utf8").replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
     cache.set(name, text);
   }
   return text;

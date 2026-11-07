@@ -51,7 +51,7 @@ const REFS: Record<string, object[]> = {
 };
 
 function jsonBlocks(prompt: string): unknown[] {
-  return [...prompt.matchAll(/```json\n([\s\S]*?)\n```/g)].map((m) => {
+  return [...prompt.matchAll(/```json\r?\n([\s\S]*?)\r?\n```/g)].map((m) => {
     try {
       return JSON.parse(m[1]!);
     } catch {
