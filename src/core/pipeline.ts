@@ -65,7 +65,7 @@ export async function generate(rawInputs: RunInputs, deps: PipelineDeps): Promis
     const prev = ledger.meetings[meetingId];
     if (prev) {
       throw new MeetingAlreadyProcessedError(
-        `Meeting "${meetingId}" was already processed on ${prev.processedAt}. Use --force to process it again.`,
+        `Meeting "${meetingId}" was already processed on ${prev.processedAt}. Use --force (or tick “process again” in the web form) to process it again.`,
       );
     }
     const sameInput = Object.entries(ledger.meetings).find(([, m]) => m.inputHash === inputs.inputHash);
@@ -76,7 +76,7 @@ export async function generate(rawInputs: RunInputs, deps: PipelineDeps): Promis
     }
     if (existsSync(store.pendingFile(meetingId))) {
       throw new MeetingAlreadyProcessedError(
-        `Drafts for "${meetingId}" are waiting for review. Run "minion review ${meetingId}", or use --force to regenerate them.`,
+        `Drafts for "${meetingId}" are waiting for review. Run "minion review ${meetingId}", or use --force (“process again” in the web form) to regenerate them.`,
       );
     }
   }
