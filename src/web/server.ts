@@ -102,6 +102,17 @@ export async function startWebServer(opts: WebServerOptions): Promise<{ url: str
       res.end(html);
       return;
     }
+    // out/<meeting>/index.html of a processed meeting (looked up in the ledger, never a free path)
+    if (req.method === "GET" && parts[0] === "out" && parts[1] && parts.length === 2) {
+      const meeting = (await store.loadLedger()).meetings[decodeURIComponent(parts[1])];
+      if (!meeting?.outDir) throw new HttpError(404, "No output for this meeting");
+      const html = await readFile(path.join(meeting.outDir, "index.html")).catch(() => {
+        throw new HttpError(404, "No output for this meeting");
+      });
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8", "x-frame-options": "SAMEORIGIN" });
+      res.end(html);
+      return;
+    }
     if (parts[0] !== "api") throw new HttpError(404, "Not found");
 
     if (req.method === "GET" && url.pathname === "/api/info") {

@@ -53,6 +53,9 @@
   .merged .fields { display: none; }
   .merge-box { display: none; margin: 8px 0; }
   .merged .merge-box { display: block; }
+  .saved { display: grid; grid-template-columns: 1fr auto; gap: 2px 16px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .saved .hint { grid-column: 1; font-size: 13px; word-break: break-all; }
+  .saved .issue-btn { grid-column: 2; grid-row: 1 / span 2; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); text-decoration: none; font-weight: 600; white-space: nowrap; }
   label.pick { display: flex; gap: 8px; align-items: baseline; font-weight: 400; margin: 6px 0; }
   ul.plain { margin: 6px 0; padding-left: 18px; }
   .ok { color: var(--ok); } .bad { color: var(--bad); }
@@ -73,11 +76,11 @@
         <input id="meeting" type="text" placeholder="Sprint Review 2026-11-05">
       </div>
       <div>
-        <label for="repo">GitHub repository <span class="hint">owner/name</span></label>
+        <label for="repo">GitHub repository <span class="hint">where the tickets belong, e.g. tj/commander.js or its URL</span></label>
         <input id="repo" type="text" placeholder="owner/name">
       </div>
     </div>
-    <label for="src">Source code path <span class="hint">local git clone of the repository</span></label>
+    <label for="src">Source code folder <span class="hint">your local copy (git clone) of that repository</span></label>
     <input id="src" type="text" placeholder="C:\work\my-repo">
     <div class="actions">
       <button id="start">Generate drafts</button>
@@ -305,10 +308,16 @@ $("finalize").addEventListener("click", async () => {
     $("finalize").disabled = true;
     const r = await api(`/api/pending/${encodeURIComponent(CURRENT.run.meetingId)}/finalize`, { decisions });
     out.replaceChildren(
-      ...r.written.map((w) => el("div", { class: "ok" }, `Saved: ${w.title} → ${w.file}`)),
+      ...r.written.map((w) => el("div", { class: "saved" },
+        el("div", { class: "ok" }, `Saved: ${w.title}`),
+        el("div", { class: "hint" }, w.file),
+        el("a", { class: "issue-btn", href: w.issueUrl, target: "_blank", rel: "noopener",
+          onclick: () => { if (!w.issueUrlComplete) navigator.clipboard.writeText(w.body).catch(() => {}); } }, "Open as GitHub issue"))),
       ...r.merged.map((m) => el("div", { class: "ok" }, `Merged into existing draft ${m.into}${m.file ? ` → ${m.file}` : ""}`)),
       ...r.rejected.map((t) => el("div", { class: "hint" }, `Rejected: ${t}`)),
-      ...(r.outDir ? [el("p", {}, `Drafts and manifest.json: ${r.outDir}`)] : []),
+      ...(r.outDir ? [el("p", {}, `All files are in ${r.outDir}`, el("br"), el("span", { class: "hint" },
+        "One Markdown file per ticket, manifest.json, and "), el("a", { href: `/out/${encodeURIComponent(CURRENT.run.meetingId)}`, target: "_blank", id: "index-link" }, "index.html"),
+        el("span", { class: "hint" }, " with the same GitHub buttons, for later."))] : []),
     );
     await loadPending();
   } catch (e) {

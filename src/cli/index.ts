@@ -44,6 +44,7 @@ function printResult(r: FinalizeResult): void {
   for (const m of r.merged) console.log(`🔁 merged into draft ${m.into}${m.file ? `\n   ${m.file}` : ""}`);
   for (const t of r.rejected) console.log(`✖ rejected: ${t}`);
   if (r.outDir) console.log(`\nDrafts and manifest: ${r.outDir}`);
+  if (r.indexPage) console.log(`Open ${r.indexPage} to create the tickets on GitHub (one click each).`);
 }
 
 program

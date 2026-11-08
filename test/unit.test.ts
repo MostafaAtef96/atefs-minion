@@ -5,6 +5,7 @@ import { decidePermission } from "../src/control/permissions.js";
 import { extractJson } from "../src/control/json.js";
 import { loadConfig } from "../src/core/config.js";
 import { mergeDrafts } from "../src/core/finalize.js";
+import { MAX_ISSUE_URL, newIssueLink, renderIndexPage } from "../src/core/export.js";
 import { originMatchesRepo, listTrackedFiles, readGitInfo } from "../src/core/git.js";
 import { validateInputs } from "../src/core/inputs.js";
 import { permalink, verifyRefs } from "../src/core/refs.js";
@@ -236,5 +237,35 @@ describe("inputs and config", () => {
     expect(cfg.outDir).toBe(path.join(dir, "drafts"));
     await writeFile(path.join(dir, "bad.json"), JSON.stringify({ maxRetries: 99 }));
     expect(() => loadConfig("bad.json", dir)).toThrow(/maxRetries/);
+  });
+});
+
+describe("importing drafts into GitHub", () => {
+  it("builds a pre-filled new-issue link", () => {
+    const link = newIssueLink(draft());
+    expect(link.complete).toBe(true);
+    const url = new URL(link.url);
+    expect(url.origin + url.pathname).toBe("https://github.com/tj/commander.js/issues/new");
+    expect(url.searchParams.get("title")).toBe(content.title);
+    expect(url.searchParams.get("labels")).toBe("atefs-minion");
+    expect(url.searchParams.get("body")).toBe(link.body);
+    expect(link.body).toContain("## Objective");
+  });
+
+  it("leaves the body out of the link when it is too long, so it can be pasted", () => {
+    const long = draft({ content: { ...content, inScope: Array.from({ length: 200 }, (_, i) => `Scope item number ${i} with some words`) } });
+    const link = newIssueLink(long);
+    expect(link.complete).toBe(false);
+    expect(link.url.length).toBeLessThanOrEqual(MAX_ISSUE_URL);
+    expect(new URL(link.url).searchParams.get("body")).toBeNull();
+    expect(link.body).toContain("Scope item number 199");
+  });
+
+  it("renders an index page with one GitHub button per ticket", () => {
+    const html = renderIndexPage("Planning <1>", "tj/commander.js", [draft(), draft({ id: "d2" })]);
+    expect(html).toContain("<title>Planning &lt;1&gt; · Atef's Minion</title>");
+    expect(html.match(/Open as GitHub issue/g)).toHaveLength(2);
+    expect(html).toContain('href="https://github.com/tj/commander.js/issues/new?title=');
+    expect(html).toContain('<svg class="logo"');
   });
 });

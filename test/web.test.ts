@@ -71,6 +71,11 @@ describe("local web form", () => {
     expect(fin.json.written.map((w: any) => w.title)).toEqual(["Edited title", "Add opt-in JSON help output"]);
     expect(await readFile(fin.json.written[0].file, "utf8")).toMatch(/^# Edited title/);
     expect((await request(`${url}api/pending`, "GET")).json).toEqual([]);
+    expect(fin.json.written[0].issueUrl).toContain("/issues/new?title=Edited%20title");
+    const index = await request(`${url}out/planning-2026-11-03`, "GET");
+    expect(index.status).toBe(200);
+    expect(index.text).toContain("Open as GitHub issue");
+    expect((await request(`${url}out/..%2F..%2Fetc`, "GET")).status).toBe(404);
   });
 
   it("rejects foreign hosts, origins and non-JSON posts", async () => {

@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { copyFile, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { MinionConfig } from "./config.js";
+import { newIssueLink, renderIndexPage } from "./export.js";
 import { AGENT_LABEL, AGENT_NAME, renderDraftFile, renderIssueBody } from "./render.js";
 import type { Draft, Ledger, MergeAdditions, PendingRun, ReviewDecision, TicketContent, VerifiedRef } from "./schemas.js";
 import type { Store } from "./store.js";
@@ -87,7 +88,9 @@ export function allAdditions(c: MergeCandidates): MergeAdditions {
 
 export interface FinalizeResult {
   outDir: string | null;
-  written: { draftId: string; file: string; title: string }[];
+  written: { draftId: string; file: string; title: string; issueUrl: string; issueUrlComplete: boolean; body: string }[];
+  /** out/<meeting>/index.html with "Open as GitHub issue" buttons (null when nothing was written). */
+  indexPage: string | null;
   merged: { draftId: string; into: string; file: string | null }[];
   rejected: string[];
 }
@@ -107,7 +110,7 @@ export async function finalize(
   }
   const ledger = await deps.store.loadLedger();
   const outDir = path.join(deps.config.outDir, run.meetingId);
-  const result: FinalizeResult = { outDir: null, written: [], merged: [], rejected: [] };
+  const result: FinalizeResult = { outDir: null, written: [], merged: [], rejected: [], indexPage: null };
   // A forced re-run of a meeting keeps the drafts approved earlier and continues the numbering.
   const previous = ledger.meetings[run.meetingId];
   const meetingDraftIds: string[] = [...(previous?.drafts ?? [])];
@@ -128,7 +131,8 @@ export async function finalize(
       await writeFile(file, renderDraftFile(final), "utf8");
       ledger.drafts[final.id] = final;
       meetingDraftIds.push(final.id);
-      result.written.push({ draftId: final.id, file, title: content.title });
+      const link = newIssueLink(final);
+      result.written.push({ draftId: final.id, file, title: content.title, issueUrl: link.url, issueUrlComplete: link.complete, body: link.body });
     } else {
       const target = ledger.drafts[decision.into];
       if (!target) throw new Error(`Cannot merge "${draft.content.title}": draft ${decision.into} is not in the ledger.`);
@@ -159,6 +163,7 @@ export async function finalize(
       mergedInto: result.merged.map((m) => ({ title: run.drafts.find((d) => d.draft.id === m.draftId)!.draft.content.title, into: m.into })),
       commitSha: run.commitSha,
     });
+    result.indexPage = path.join(outDir, "index.html");
     const log = deps.store.pendingLogFile(run.meetingId);
     if (deps.config.logPrompts && existsSync(log)) await copyFile(log, path.join(outDir, "run.log"));
   }
@@ -222,6 +227,8 @@ export async function writeManifest(ledger: Ledger, meetingId: string, extras: M
     skipped: extras.skipped ?? previous["skipped"] ?? [],
   };
   await writeAtomic(file, JSON.stringify(manifest, null, 2));
+  const live = meeting.drafts.map((id) => ledger.drafts[id]).filter((d): d is Draft => Boolean(d));
+  await writeAtomic(path.join(meeting.outDir, "index.html"), renderIndexPage(meeting.title, meeting.repo, live));
 }
 
 /** Remove a draft created by mistake: deletes it from the ledger and its meeting, deletes its file, rewrites the manifest. */

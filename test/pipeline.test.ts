@@ -69,9 +69,14 @@ describe("pipeline on the synthetic samples", () => {
     expect((await readdir(outDir)).sort()).toEqual([
       "01-mention-env-variable-in-missing-mandatory-option.md",
       "02-add-opt-in-json-help-output.md",
+      "index.html",
       "manifest.json",
       "run.log",
     ]);
+    const index = await readFile(path.join(outDir, "index.html"), "utf8");
+    expect(index.match(/Open as GitHub issue/g)).toHaveLength(2);
+    expect(result.written[0]!.issueUrl).toMatch(/^https:\/\/github\.com\/tj\/commander\.js\/issues\/new\?title=Mention/);
+    expect(result.indexPage).toBe(path.join(outDir, "index.html"));
     const md = await readFile(result.written[0]!.file, "utf8");
     expect(md).toMatch(/^# Mention env variable in missing mandatory option error/);
     expect(md).toContain('\n---\n<img src="https://raw.githubusercontent.com/MostafaAtef96/atefs-minion/main/assets/minion-signature.png" width="20" height="20" alt="Atef\'s Minion"> Drafted by **Atef\'s Minion**');

@@ -8,6 +8,7 @@
     "minion": "dist/cli/index.js"
   },
   "files": [
+    "assets",
     "dist",
     "prompts",
     "web"

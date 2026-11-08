@@ -113,7 +113,8 @@ minion run … --force             process a meeting again
 Run `minion web` and open the address it prints. In the form:
 
 1. Choose the exported notes file(s).
-2. Enter the meeting title, the repository, and the path to your local clone.
+2. Enter the meeting title, the **GitHub repository** the tickets are for (`owner/name`, e.g.
+   `tj/commander.js`, or its URL) and the **source code folder**: your local `git clone` of that repository.
 3. Click **Generate drafts**.
 4. Each draft appears as an editable card. Approve or reject each one, then click **Save decisions**.
    For a draft that is already ticketed, **Merge into existing ticket** is preselected. Tick any new details
@@ -126,6 +127,7 @@ The server listens on `127.0.0.1` only.
 ```
 out/<meeting-id>/
   01-<title>.md     draft: "# Title" + body in the Standardized Ticket Format, signed by Atef's Minion
+  index.html        open it in a browser: one "Open as GitHub issue" button per ticket
   manifest.json     machine-readable drafts (issue title/body/labels) — input for MVP2
   run.log           every prompt and answer (including retries), each file Gemini read or searched,
                     every tool the app allowed or denied, and the total run time (turn off with --no-log)
@@ -141,6 +143,18 @@ Each draft:
   Story Points are never estimated and Sub-Tasks are never created.
 - **Signed:** a visible footer, `Drafted by Atef's Minion` with the green mascot next to it (set `signatureImage` to `null` in the config for text only), plus a hidden
   `<!-- atefs-minion:v1 {...} -->` block used for duplicate detection.
+
+### Getting the tickets into GitHub
+
+Phase 1 doesn't create issues by itself, but importing them takes one click per ticket:
+
+- After saving in the web form, every ticket has an **Open as GitHub issue** button.
+- After a command-line run, open `out/<meeting-id>/index.html` (double-click it) for the same buttons.
+
+The button opens GitHub's *New issue* page for the repository, with the title, the body and the
+`atefs-minion` label filled in. Check it and click **Submit new issue**. No token is needed, and
+nothing is created until you submit. For a very long ticket the body doesn't fit in the link, so it is
+copied to your clipboard to paste instead.
 
 ## Duplicate prevention
 
