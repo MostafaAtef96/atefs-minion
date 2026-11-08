@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { loadConfig, type MinionConfig } from "../core/config.js";
 import { createInterface } from "node:readline/promises";
 import { finalize, removeDraft, type FinalizeResult } from "../core/finalize.js";
+import { setSignatureImage } from "../core/render.js";
 import { InputError, readNotesFiles } from "../core/inputs.js";
 import { generate } from "../core/pipeline.js";
 import { Store } from "../core/store.js";
@@ -21,6 +22,7 @@ program
 function config(): MinionConfig {
   const opts = program.opts<{ config?: string; out?: string; log: boolean }>();
   const cfg = loadConfig(opts.config);
+  setSignatureImage(cfg.signatureImage);
   if (opts.out) cfg.outDir = opts.out;
   if (!opts.log) cfg.logPrompts = false;
   return cfg;

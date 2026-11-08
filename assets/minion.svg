@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Atef's Minion">
   <title>Atef's Minion</title>
   <ellipse cx="60" cy="113" rx="30" ry="4" fill="#000" opacity=".12"/>
-  <path d="M60 6 v10" stroke="#2f4ac0" stroke-width="4" stroke-linecap="round"/>
-  <circle cx="60" cy="6" r="5" fill="#63e6be"/>
-  <rect x="20" y="16" width="80" height="94" rx="40" fill="#3b5bdb"/>
+  <path d="M60 6 v10" stroke="#237a36" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="60" cy="6" r="5" fill="#d3f9d8" stroke="#237a36" stroke-width="2"/>
+  <rect x="20" y="16" width="80" height="94" rx="40" fill="#2f9e44"/>
   <rect x="20" y="16" width="80" height="94" rx="40" fill="url(#shine)"/>
   <rect x="30" y="30" width="60" height="42" rx="21" fill="#ffffff"/>
   <circle cx="48" cy="49" r="6.5" fill="#1d2330"/>
@@ -21,7 +21,7 @@
     <path d="M68 99 l3.5 3.5 l6 -7" stroke="#2b8a3e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M81 99 h9" stroke="#adb5bd" stroke-width="3" stroke-linecap="round"/>
   </g>
-  <path d="M26 82 q-10 6 -6 16" stroke="#2f4ac0" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="M26 82 q-10 6 -6 16" stroke="#237a36" stroke-width="7" fill="none" stroke-linecap="round"/>
   <defs>
     <linearGradient id="shine" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#fff" stop-opacity=".18"/>

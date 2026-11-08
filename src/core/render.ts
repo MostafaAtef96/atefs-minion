@@ -3,6 +3,19 @@ import { TicketContent, type Draft, type TicketType } from "./schemas.js";
 
 export const AGENT_NAME = "Atef's Minion";
 export const AGENT_LABEL = "atefs-minion";
+/** Mascot shown next to the signature (a public PNG, because GitHub Markdown can only show images by URL). */
+export const DEFAULT_SIGNATURE_IMAGE = "https://raw.githubusercontent.com/MostafaAtef96/atefs-minion/main/assets/minion-signature.png";
+let signatureImage: string | null = DEFAULT_SIGNATURE_IMAGE;
+
+/** Set the signature image URL (null = text-only signature). */
+export function setSignatureImage(url: string | null): void {
+  signatureImage = url;
+}
+
+function signature(meetingNames: string): string {
+  const img = signatureImage ? `<img src="${signatureImage}" width="20" height="20" alt="${AGENT_NAME}"> ` : "";
+  return `${img}Drafted by **${AGENT_NAME}** · Source: ${meetingNames}`;
+}
 const TBD = "_To be defined during refinement_";
 
 const TYPE_LABEL: Record<TicketType, string> = { UserStory: "User Story", Task: "Task" };
@@ -116,7 +129,7 @@ export function renderIssueBody(draft: Draft): string {
     code + flags,
     "",
     "---",
-    `Drafted by **${AGENT_NAME}** · Source: ${meetingNames}`,
+    signature(meetingNames),
     renderMetadata(draft),
     "",
   ].join("\n");

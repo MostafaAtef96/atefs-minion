@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
+import { DEFAULT_SIGNATURE_IMAGE } from "./render.js";
 
 export const MinionConfig = z.object({
   /** Command used to start Gemini CLI. On Windows "gemini" resolves to gemini.cmd. */
@@ -23,6 +24,8 @@ export const MinionConfig = z.object({
   promptTimeoutSec: z.number().int().min(10).default(600),
   /** Max earlier drafts compared semantically (L3) per new draft. */
   dedupMaxCandidates: z.number().int().min(1).default(50),
+  /** Image shown next to the "Drafted by Atef's Minion" signature; null for a text-only signature. */
+  signatureImage: z.string().url().nullable().default(DEFAULT_SIGNATURE_IMAGE),
   /** Port of the local web form. */
   webPort: z.number().int().min(1).max(65535).default(4711),
 });

@@ -8,7 +8,7 @@ import { mergeDrafts } from "../src/core/finalize.js";
 import { originMatchesRepo, listTrackedFiles, readGitInfo } from "../src/core/git.js";
 import { validateInputs } from "../src/core/inputs.js";
 import { permalink, verifyRefs } from "../src/core/refs.js";
-import { AGENT_NAME, parseEditable, renderDraftFile, renderEditable } from "../src/core/render.js";
+import { AGENT_NAME, DEFAULT_SIGNATURE_IMAGE, parseEditable, renderDraftFile, renderEditable, setSignatureImage } from "../src/core/render.js";
 import type { Draft, TicketContent } from "../src/core/schemas.js";
 import { fingerprint, normalizeTitle, slugify } from "../src/core/text.js";
 import { makeRepo, tempDir } from "./helpers.js";
@@ -104,6 +104,16 @@ describe("rendering", () => {
     expect(md).toContain('> "I\'ll take it" — Lena, 00:02:10');
     expect(md).toContain("_none identified_");
     expect(md).not.toMatch(/Story Points:\*\* \d/);
+  });
+
+  it("shows the mascot next to the signature, or text only when disabled", () => {
+    expect(renderDraftFile(draft())).toMatch(/<img src="https:\/\/raw\.githubusercontent\.com\/MostafaAtef96\/atefs-minion\/main\/assets\/minion-signature\.png" width="20" height="20" alt="Atef's Minion"> Drafted by/);
+    setSignatureImage(null);
+    try {
+      expect(renderDraftFile(draft())).toContain("\n---\nDrafted by **Atef's Minion** · Source: *Planning*");
+    } finally {
+      setSignatureImage(DEFAULT_SIGNATURE_IMAGE);
+    }
   });
 
   it("round-trips the editable format", () => {

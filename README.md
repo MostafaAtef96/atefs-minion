@@ -61,6 +61,7 @@ Copy `minion.config.example.json` to `minion.config.json` in the folder you run 
 | `maxRetries` | `2` | Retries when Gemini's answer doesn't match the expected JSON |
 | `logPrompts` | `true` | Keep prompts and answers in `run.log` (local only) |
 | `promptTimeoutSec` | `600` | Timeout for a single Gemini turn, in seconds |
+| `signatureImage` | mascot PNG in this repo | Image URL shown next to the ticket signature; `null` = text only |
 | `webPort` | `4711` | Port of the local web form |
 
 ## Export the meeting notes
@@ -138,7 +139,7 @@ Each draft:
   the exact commit and line ranges.
 - **Never invented:** a section the meeting didn't cover says *"To be defined during refinement"*.
   Story Points are never estimated and Sub-Tasks are never created.
-- **Signed:** a visible footer, `Drafted by Atef's Minion`, plus a hidden
+- **Signed:** a visible footer, `Drafted by Atef's Minion` with the green mascot next to it (set `signatureImage` to `null` in the config for text only), plus a hidden
   `<!-- atefs-minion:v1 {...} -->` block used for duplicate detection.
 
 ## Duplicate prevention
