@@ -71,7 +71,7 @@ export async function generate(rawInputs: RunInputs, deps: PipelineDeps): Promis
     const sameInput = Object.entries(ledger.meetings).find(([, m]) => m.inputHash === inputs.inputHash);
     if (sameInput) {
       throw new MeetingAlreadyProcessedError(
-        `These notes were already processed as meeting "${sameInput[0]}". Use --force to process them again.`,
+        `These notes were already processed as meeting "${sameInput[0]}". Use --force (or tick “process again” in the web form) to process them again.`,
       );
     }
     if (existsSync(store.pendingFile(meetingId))) {
