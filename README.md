@@ -113,8 +113,9 @@ minion run … --force             process a meeting again
 Run `minion web` and open the address it prints. In the form:
 
 1. Choose the exported notes file(s).
-2. Enter the meeting title, the **GitHub repository** the tickets are for (`owner/name`, e.g.
-   `tj/commander.js`, or its URL) and the **source code folder**: your local `git clone` of that repository.
+2. Enter the meeting title, the **GitHub ticket repository** (the repository the tickets are for, as
+   `owner/name` such as `tj/commander.js`, or its URL) and the **local code folder** (the path to your
+   `git clone` of that repository on this computer).
 3. Click **Generate drafts**.
 4. Each draft appears as an editable card. Approve or reject each one, then click **Save decisions**.
    For a draft that is already ticketed, **Merge into existing ticket** is preselected. Tick any new details
