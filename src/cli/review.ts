@@ -112,6 +112,7 @@ export async function reviewInTerminal(run: PendingRun, ledger: Ledger): Promise
     for (;;) {
       console.log(`\n${RULE}\nDraft ${i + 1}/${run.drafts.length}\n${RULE}`);
       console.log(forTerminal(renderDraftFile({ ...p.draft, content })));
+      if (target) console.log("");
       for (const l of target ? describeDuplicate(p, ledger) : []) console.log(l);
       const toggle = `[t]ype → ${content.type === "Task" ? "UserStory" : "Task"}`;
       const options = target
