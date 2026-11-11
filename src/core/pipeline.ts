@@ -107,7 +107,7 @@ export async function generate(rawInputs: RunInputs, deps: PipelineDeps): Promis
   for (const w of warnings) log("warning", w);
 
   // ---- Step 1: init -------------------------------------------------------------------
-  progress("Starting Gemini CLI…");
+  progress("Starting the AI agent…");
   const startedAt = Date.now();
   const session = await deps.agents.open(srcPath, { onEvent: (text) => log("event", text) });
   // Every turn (including retries after invalid JSON) is logged with its task label.

@@ -32,7 +32,7 @@ describe("minion CLI (built) with a fake Gemini CLI over stdio", () => {
 
     const r = await minion("run", "--notes", path.join(ROOT, "samples", "04-team-sync-2026-11-20.md"), "--meeting", "Team sync 2026-11-20", "--src", repo, "--no-review");
     expect(r.stdout).toContain("minion review team-sync-2026-11-20");
-    expect(r.stderr).toContain("Starting Gemini CLI");
+    expect(r.stderr).toContain("Starting the AI agent");
     expect(r.stderr).toContain("ReadFile lib/command.js");
     expect(existsSync(path.join(dir, "out"))).toBe(false);
 
