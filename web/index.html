@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atef's Minion</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 120 120&quot; role=&quot;img&quot; aria-label=&quot;Atef's Minion&quot;%3E %3Ctitle%3EAtef's Minion%3C/title%3E %3Cellipse cx=&quot;60&quot; cy=&quot;113&quot; rx=&quot;30&quot; ry=&quot;4&quot; fill=&quot;#000&quot; opacity=&quot;.12&quot;/%3E %3Cpath d=&quot;M60 6 v10&quot; stroke=&quot;#237a36&quot; stroke-width=&quot;4&quot; stroke-linecap=&quot;round&quot;/%3E %3Ccircle cx=&quot;60&quot; cy=&quot;6&quot; r=&quot;5&quot; fill=&quot;#d3f9d8&quot; stroke=&quot;#237a36&quot; stroke-width=&quot;2&quot;/%3E %3Crect x=&quot;20&quot; y=&quot;16&quot; width=&quot;80&quot; height=&quot;94&quot; rx=&quot;40&quot; fill=&quot;#2f9e44&quot;/%3E %3Crect x=&quot;20&quot; y=&quot;16&quot; width=&quot;80&quot; height=&quot;94&quot; rx=&quot;40&quot; fill=&quot;url(#shine)&quot;/%3E %3Crect x=&quot;30&quot; y=&quot;30&quot; width=&quot;60&quot; height=&quot;42&quot; rx=&quot;21&quot; fill=&quot;#ffffff&quot;/%3E %3Ccircle cx=&quot;48&quot; cy=&quot;49&quot; r=&quot;6.5&quot; fill=&quot;#1d2330&quot;/%3E %3Ccircle cx=&quot;72&quot; cy=&quot;49&quot; r=&quot;6.5&quot; fill=&quot;#1d2330&quot;/%3E %3Ccircle cx=&quot;50.2&quot; cy=&quot;46.8&quot; r=&quot;2.2&quot; fill=&quot;#fff&quot;/%3E %3Ccircle cx=&quot;74.2&quot; cy=&quot;46.8&quot; r=&quot;2.2&quot; fill=&quot;#fff&quot;/%3E %3Cpath d=&quot;M51 60 q9 7.5 18 0&quot; stroke=&quot;#1d2330&quot; stroke-width=&quot;3.2&quot; fill=&quot;none&quot; stroke-linecap=&quot;round&quot;/%3E %3Ccircle cx=&quot;38&quot; cy=&quot;59&quot; r=&quot;3.2&quot; fill=&quot;#ff8fab&quot; opacity=&quot;.55&quot;/%3E %3Ccircle cx=&quot;82&quot; cy=&quot;59&quot; r=&quot;3.2&quot; fill=&quot;#ff8fab&quot; opacity=&quot;.55&quot;/%3E %3Cg transform=&quot;rotate(-8 80 92)&quot;%3E %3Crect x=&quot;62&quot; y=&quot;74&quot; width=&quot;34&quot; height=&quot;38&quot; rx=&quot;5&quot; fill=&quot;#ffffff&quot; stroke=&quot;#1d2330&quot; stroke-width=&quot;3&quot;/%3E %3Crect x=&quot;72&quot; y=&quot;70&quot; width=&quot;14&quot; height=&quot;8&quot; rx=&quot;3&quot; fill=&quot;#f59f00&quot; stroke=&quot;#1d2330&quot; stroke-width=&quot;2.5&quot;/%3E %3Cpath d=&quot;M68 87 l3.5 3.5 l6 -7&quot; stroke=&quot;#2b8a3e&quot; stroke-width=&quot;3&quot; fill=&quot;none&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;/%3E %3Cpath d=&quot;M81 87 h9&quot; stroke=&quot;#adb5bd&quot; stroke-width=&quot;3&quot; stroke-linecap=&quot;round&quot;/%3E %3Cpath d=&quot;M68 99 l3.5 3.5 l6 -7&quot; stroke=&quot;#2b8a3e&quot; stroke-width=&quot;3&quot; fill=&quot;none&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;/%3E %3Cpath d=&quot;M81 99 h9&quot; stroke=&quot;#adb5bd&quot; stroke-width=&quot;3&quot; stroke-linecap=&quot;round&quot;/%3E %3C/g%3E %3Cpath d=&quot;M26 82 q-10 6 -6 16&quot; stroke=&quot;#237a36&quot; stroke-width=&quot;7&quot; fill=&quot;none&quot; stroke-linecap=&quot;round&quot;/%3E %3Cdefs%3E %3ClinearGradient id=&quot;shine&quot; x1=&quot;0&quot; y1=&quot;0&quot; x2=&quot;1&quot; y2=&quot;1&quot;%3E %3Cstop offset=&quot;0&quot; stop-color=&quot;#fff&quot; stop-opacity=&quot;.18&quot;/%3E %3Cstop offset=&quot;.5&quot; stop-color=&quot;#fff&quot; stop-opacity=&quot;0&quot;/%3E %3C/linearGradient%3E %3C/defs%3E %3C/svg%3E">
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #5d6676; --border: #d9dde4;
+    --accent: #3b5bdb; --accent-text: #ffffff; --ok: #2b8a3e; --warn: #b26a00; --bad: #c92a2a; --code: #eef1f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171c; --panel: #1c2027; --text: #e6e9ef; --muted: #9aa3b2; --border: #2e343e;
+      --accent: #7c96ff; --accent-text: #0e1116; --ok: #69db7c; --warn: #ffc078; --bad: #ff8787; --code: #242a33;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { padding: 16px 24px; border-bottom: 1px solid var(--border); background: var(--panel); display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 20px; }
+  header .logo { width: 34px; height: 34px; align-self: center; }
+  header .logo svg { width: 100%; height: 100%; display: block; }
+  header span { color: var(--muted); }
+  main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 64px; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+  h2 { margin: 0 0 12px; font-size: 17px; }
+  h3 { margin: 0; font-size: 16px; }
+  label { display: block; font-weight: 600; margin: 12px 0 4px; }
+  .hint { color: var(--muted); font-weight: 400; font-size: 13px; }
+  input[type=text], textarea, select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
+  textarea { min-height: 70px; resize: vertical; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 700px) { .row { grid-template-columns: 1fr; } }
+  button { padding: 8px 16px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-text); font: inherit; font-weight: 600; cursor: pointer; }
+  button.secondary { background: transparent; color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  .actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; align-items: center; }
+  pre { background: var(--code); padding: 12px; border-radius: 6px; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 13px; margin: 8px 0 0; }
+  .log { max-height: 260px; }
+  .card { border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-top: 16px; }
+  .card-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; border: 1px solid var(--border); color: var(--muted); }
+  .notice { border-left: 3px solid var(--warn); padding: 6px 10px; margin: 8px 0; background: var(--code); border-radius: 4px; }
+  .notice.dup { border-color: var(--accent); }
+  .decision { display: flex; gap: 16px; flex-wrap: wrap; }
+  .decision label { display: inline-flex; gap: 6px; align-items: center; font-weight: 600; margin: 0; }
+  .dod { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px; }
+  @media (max-width: 700px) { .dod { grid-template-columns: 1fr; } }
+  .dod label { font-weight: 400; margin: 0; display: flex; gap: 6px; }
+  .rejected .fields { opacity: .45; }
+  .merged .fields { display: none; }
+  .merge-box { display: none; margin: 8px 0; }
+  .merged .merge-box { display: block; }
+  .saved { display: grid; grid-template-columns: 1fr auto; gap: 2px 16px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .saved .hint { grid-column: 1; font-size: 13px; word-break: break-all; }
+  .saved .issue-btn { grid-column: 2; grid-row: 1 / span 2; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); text-decoration: none; font-weight: 600; white-space: nowrap; }
+  .saved .link-form { grid-column: 1 / span 2; display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+  .saved .link-form input { flex: 1; padding: 6px 10px; }
+  .saved .link-form button { padding: 6px 12px; }
+  .recap { margin-top: 18px; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .recap .card-head button { padding: 6px 14px; }
+  label.pick { display: flex; gap: 8px; align-items: baseline; font-weight: 400; margin: 6px 0; }
+  ul.plain { margin: 6px 0; padding-left: 18px; }
+  .ok { color: var(--ok); } .bad { color: var(--bad); }
+  a { color: var(--accent); }
+  details summary { cursor: pointer; color: var(--muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+<header><span class="logo" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" > <title>Atef's Minion</title> <ellipse cx="60" cy="113" rx="30" ry="4" fill="#000" opacity=".12"/> <path d="M60 6 v10" stroke="#237a36" stroke-width="4" stroke-linecap="round"/> <circle cx="60" cy="6" r="5" fill="#d3f9d8" stroke="#237a36" stroke-width="2"/> <rect x="20" y="16" width="80" height="94" rx="40" fill="#2f9e44"/> <rect x="20" y="16" width="80" height="94" rx="40" fill="url(#shine)"/> <rect x="30" y="30" width="60" height="42" rx="21" fill="#ffffff"/> <circle cx="48" cy="49" r="6.5" fill="#1d2330"/> <circle cx="72" cy="49" r="6.5" fill="#1d2330"/> <circle cx="50.2" cy="46.8" r="2.2" fill="#fff"/> <circle cx="74.2" cy="46.8" r="2.2" fill="#fff"/> <path d="M51 60 q9 7.5 18 0" stroke="#1d2330" stroke-width="3.2" fill="none" stroke-linecap="round"/> <circle cx="38" cy="59" r="3.2" fill="#ff8fab" opacity=".55"/> <circle cx="82" cy="59" r="3.2" fill="#ff8fab" opacity=".55"/> <g transform="rotate(-8 80 92)"> <rect x="62" y="74" width="34" height="38" rx="5" fill="#ffffff" stroke="#1d2330" stroke-width="3"/> <rect x="72" y="70" width="14" height="8" rx="3" fill="#f59f00" stroke="#1d2330" stroke-width="2.5"/> <path d="M68 87 l3.5 3.5 l6 -7" stroke="#2b8a3e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/> <path d="M81 87 h9" stroke="#adb5bd" stroke-width="3" stroke-linecap="round"/> <path d="M68 99 l3.5 3.5 l6 -7" stroke="#2b8a3e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/> <path d="M81 99 h9" stroke="#adb5bd" stroke-width="3" stroke-linecap="round"/> </g> <path d="M26 82 q-10 6 -6 16" stroke="#237a36" stroke-width="7" fill="none" stroke-linecap="round"/> <defs> <linearGradient id="shine" x1="0" y1="0" x2="1" y2="1"> <stop offset="0" stop-color="#fff" stop-opacity=".18"/> <stop offset=".5" stop-color="#fff" stop-opacity="0"/> </linearGradient> </defs> </svg></span><h1>Atef's Minion</h1><span>meeting notes → ticket drafts</span></header>
+<main>
+  <section id="new-run">
+    <h2>New meeting</h2>
+    <label for="notes">Gemini notes / transcript <span class="hint">(.md or .txt exported from Google Docs; one or two files)</span></label>
+    <input id="notes" type="file" accept=".md,.markdown,.txt,.vtt" multiple>
+    <div class="row">
+      <div>
+        <label for="meeting">Meeting title (ID)</label>
+        <input id="meeting" type="text" placeholder="Sprint Review 2026-11-05">
+      </div>
+      <div>
+        <label for="repo">GitHub ticket repository <span class="hint">owner/name</span></label>
+        <input id="repo" type="text" placeholder="owner/name">
+      </div>
+    </div>
+    <label for="src">Local code folder <span class="hint">path on this computer</span></label>
+    <input id="src" type="text" placeholder="C:\work\my-repo">
+    <div class="actions">
+      <button id="start">Generate drafts</button>
+      <label class="hint" style="display:inline-flex;gap:6px;margin:0"><input id="force" type="checkbox"> process again even if already processed</label>
+    </div>
+    <pre id="progress" class="log" hidden></pre>
+  </section>
+
+  <section id="pending-section">
+    <h2>Waiting for review</h2>
+    <div id="pending"><span class="hint">Loading…</span></div>
+  </section>
+
+  <section id="review" hidden>
+    <h2 id="review-title"></h2>
+    <div id="review-warnings"></div>
+    <div id="review-skipped"></div>
+    <div id="cards"></div>
+    <div class="actions">
+      <button id="finalize">Save decisions</button>
+      <span class="hint">Approved drafts are written to the output folder; nothing is sent to GitHub.</span>
+    </div>
+    <div id="result"></div>
+  </section>
+</main>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+let INFO = { dod: [] };
+let CURRENT = null; // { run, duplicates }
+
+function el(tag, attrs = {}, ...children) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (v !== false && v != null) e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of children.flat()) if (c != null) e.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  return e;
+}
+
+async function api(path, body) {
+  const res = await fetch(path, body === undefined ? {} : {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+async function loadPending() {
+  const list = await api("/api/pending");
+  const box = $("pending");
+  box.replaceChildren();
+  if (!list.length) { box.append(el("span", { class: "hint" }, "Nothing is waiting for review.")); return; }
+  const ul = el("ul", { class: "plain" });
+  for (const p of list) {
+    ul.append(el("li", {}, el("a", { href: "#", onclick: (e) => { e.preventDefault(); openReview(p.meetingId); } }, p.meetingTitle),
+      ` — ${p.repo} · ${p.drafts} draft(s) · ${new Date(p.createdAt).toLocaleString()}`));
+  }
+  box.append(ul);
+}
+
+$("start").addEventListener("click", async () => {
+  const files = [...$("notes").files];
+  const progress = $("progress");
+  progress.hidden = false;
+  try {
+    if (!files.length) throw new Error("Choose at least one notes/transcript file.");
+    const notes = await Promise.all(files.map(async (f) => ({ name: f.name, content: await f.text() })));
+    $("start").disabled = true;
+    progress.textContent = "Starting…\n";
+    const { jobId } = await api("/api/runs", {
+      notes, src: $("src").value.trim(), meeting: $("meeting").value.trim(), repo: $("repo").value.trim(), force: $("force").checked,
+    });
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 1000));
+      const job = await api(`/api/jobs/${jobId}`);
+      progress.textContent = job.progress.join("\n");
+      progress.scrollTop = progress.scrollHeight;
+      if (job.status === "error") throw new Error(job.error);
+      if (job.status === "done") { await loadPending(); await openReview(job.meetingId); break; }
+    }
+  } catch (e) {
+    progress.textContent += `\nError: ${e.message}`;
+  } finally {
+    $("start").disabled = false;
+  }
+});
+
+const LISTS = [
+  ["inScope", "In Scope"], ["outOfScope", "Out of Scope"], ["dependencies", "Dependencies"],
+  ["acceptanceCriteria", "Acceptance Criteria"], ["deliverables", "Deliverable"],
+];
+
+function card(p, index, total, dup) {
+  const d = p.draft, c = d.content;
+  const id = d.id;
+  const decisionName = `decision-${id}`;
+  const fields = el("div", { class: "fields" });
+  const root = el("div", { class: "card", "data-id": id });
+
+  fields.append(
+    el("div", { class: "row" },
+      el("div", {}, el("label", {}, "Title"), el("input", { type: "text", name: "title", value: c.title })),
+      el("div", {}, el("label", {}, "Type"), (() => {
+        const s = el("select", { name: "type" }, el("option", { value: "UserStory" }, "User Story"), el("option", { value: "Task" }, "Task"));
+        s.value = c.type; return s;
+      })())),
+    el("label", {}, "Objective"),
+    (() => { const t = el("textarea", { name: "objective" }); t.value = c.objective; return t; })(),
+  );
+  for (const [key, label] of LISTS) {
+    const t = el("textarea", { name: key, placeholder: "one item per line — empty = to be defined during refinement" });
+    t.value = c[key].join("\n");
+    fields.append(el("label", {}, label, " ", el("span", { class: "hint" }, "(one per line)")), t);
+  }
+  const dodBox = el("div", { class: "dod" });
+  INFO.dod.forEach((name, i) => {
+    dodBox.append(el("label", {}, el("input", { type: "checkbox", name: "dod", value: String(i + 1), checked: c.dod.includes(i + 1) }), `${i + 1}. ${name}`));
+  });
+  fields.append(el("label", {}, "Definition of Done ", el("span", { class: "hint" }, "(proposed; tailor during DoR)")), dodBox);
+
+  const context = el("details", {}, el("summary", {}, "Source & related code"));
+  for (const s of d.sources) {
+    context.append(el("div", {}, el("strong", {}, `Raised in: ${s.meetingTitle}`)));
+    for (const q of s.quotes) context.append(el("div", { class: "hint" }, `“${q.text}” ${[q.speaker, q.timestamp].filter(Boolean).join(", ")}`));
+  }
+  const refs = el("ul", { class: "plain" });
+  for (const r of d.refs) refs.append(el("li", {}, el("a", { href: r.permalink, target: "_blank", rel: "noopener" }, `${r.path}#L${r.startLine}-L${r.endLine}`), ` — ${r.symbol ? r.symbol + ": " : ""}${r.why}`));
+  context.append(d.refs.length ? refs : el("div", { class: "hint" }, "No related code identified."));
+  fields.append(context);
+
+  const preview = el("pre", { hidden: true });
+  fields.append(el("div", { class: "actions" },
+    el("button", { class: "secondary", type: "button", onclick: async () => {
+      try { preview.textContent = (await api(`/api/pending/${encodeURIComponent(CURRENT.run.meetingId)}/preview`, { draftId: id, content: readContent(root) })).markdown; preview.hidden = false; }
+      catch (e) { preview.textContent = e.message; preview.hidden = false; }
+    } }, "Preview Markdown")), preview);
+
+  const decision = el("div", { class: "decision" });
+  const opt = (value, label, checked) => el("label", {}, el("input", { type: "radio", name: decisionName, value, checked, onchange: () => {
+    root.classList.toggle("rejected", value === "reject"); root.classList.toggle("merged", value === "merge");
+  } }), label);
+  if (dup) decision.append(opt("merge", "Merge into existing ticket (recommended)", true), opt("approve", "Create a new ticket anyway", false));
+  else decision.append(opt("approve", "Approve", true));
+  decision.append(opt("reject", "Reject", false));
+
+  root.append(el("div", { class: "card-head" },
+    el("h3", {}, `${index + 1}/${total} · ${c.title}`),
+    el("span", { class: "badge" }, c.type === "Task" ? "Task" : "User Story")));
+  for (const f of d.flags) root.append(el("div", { class: "notice" }, f));
+  let merge = null;
+  if (dup) {
+    const how = p.dedup.layer === "L2" ? "same title" : "same work, found by Gemini";
+    merge = el("div", { class: "merge-box" });
+    const n = dup.candidates.lists.reduce((k, l) => k + l.items.length, 0) + dup.candidates.refs.length;
+    merge.append(el("div", {}, el("strong", {}, "Merging adds this meeting and its quotes to the existing ticket."),
+      n ? " Tick any new details you also want to add:" : " This meeting brought no new details."));
+    for (const l of dup.candidates.lists) {
+      for (const item of l.items) {
+        merge.append(el("label", { class: "pick" }, el("input", { type: "checkbox", "data-field": l.field, "data-value": item }), el("span", {}, el("span", { class: "hint" }, `[${l.label}] `), item)));
+      }
+    }
+    for (const r of dup.candidates.refs) {
+      merge.append(el("label", { class: "pick" }, el("input", { type: "checkbox", "data-field": "refs", "data-value": r.permalink }),
+        el("span", {}, el("span", { class: "hint" }, "[Related code] "), el("a", { href: r.permalink, target: "_blank", rel: "noopener" }, r.label), ` — ${r.why}`)));
+    }
+    merge.append(el("details", {}, el("summary", {}, "Show the existing ticket"), el("pre", {}, dup.existingMarkdown)));
+    root.append(el("div", { class: "notice dup" },
+      el("strong", {}, "Already ticketed "), `(${how}): “${dup.title}”, raised in ${dup.meetings.join(", ")}. `,
+      p.dedup.reason && p.dedup.layer !== "L2" ? el("span", { class: "hint" }, p.dedup.reason) : null));
+  }
+  root.append(...[decision, merge, fields].filter(Boolean));
+  if (dup) root.classList.add("merged");
+  return root;
+}
+
+function readContent(root) {
+  const v = (n) => root.querySelector(`[name=${n}]`).value;
+  const lines = (n) => v(n).split("\n").map((s) => s.trim()).filter(Boolean);
+  const content = { title: v("title").trim(), type: v("type"), objective: v("objective").trim(),
+    dod: [...root.querySelectorAll("[name=dod]:checked")].map((x) => Number(x.value)) };
+  for (const [key] of LISTS) content[key] = lines(key);
+  return content;
+}
+
+async function openReview(meetingId) {
+  CURRENT = await api(`/api/pending/${encodeURIComponent(meetingId)}`);
+  const { run, duplicates } = CURRENT;
+  $("review").hidden = false;
+  $("result").replaceChildren();
+  $("finalize").disabled = false;
+  $("review-title").textContent = `Review: ${run.meetingTitle} → ${run.repo}`;
+  $("review-warnings").replaceChildren(...run.warnings.map((w) => el("div", { class: "notice" }, w)));
+  $("review-skipped").replaceChildren(...(run.skipped.length ? [el("details", {}, el("summary", {}, `${run.skipped.length} item(s) not drafted (discussion only)`),
+    el("ul", { class: "plain" }, run.skipped.map((s) => el("li", {}, s.title))))] : []));
+  $("cards").replaceChildren(...(run.drafts.length
+    ? run.drafts.map((p, i) => card(p, i, run.drafts.length, duplicates[p.draft.id]))
+    : [el("p", { class: "hint" }, "No decided action items were found in this meeting.")]));
+  $("review").scrollIntoView({ behavior: "smooth" });
+}
+
+function linkForm(draftId) {
+  const input = el("input", { type: "text", placeholder: "Paste the issue URL once it exists (optional)", "aria-label": "Issue URL" });
+  const status = el("span", { class: "hint" });
+  const save = el("button", { class: "secondary", type: "button", onclick: async () => {
+    try {
+      await api(`/api/drafts/${encodeURIComponent(draftId)}/issue`, { url: input.value.trim() });
+      status.textContent = "Linked";
+      await refreshRecap(CURRENT.run.meetingId);
+    } catch (e) { status.textContent = e.message; }
+  } }, "Link");
+  return el("div", { class: "link-form" }, input, save, status);
+}
+
+function recapBox() {
+  const pre = el("pre", { id: "recap-text" });
+  const copy = el("button", { type: "button", onclick: async () => {
+    await navigator.clipboard.writeText(pre.textContent).catch(() => {});
+    copy.textContent = "Copied";
+  } }, "Copy recap");
+  return el("div", { class: "recap", id: "recap" },
+    el("div", { class: "card-head" }, el("h3", {}, "Meeting recap"), copy),
+    el("div", { class: "hint" }, "Ready to send to the attendees. Ticket links appear as you link the created issues above."),
+    pre);
+}
+
+async function refreshRecap(meetingId) {
+  const pre = document.getElementById("recap-text");
+  if (!pre) return;
+  try { pre.textContent = (await api(`/api/recap/${encodeURIComponent(meetingId)}`)).markdown || ""; }
+  catch (e) { pre.textContent = e.message; }
+}
+
+$("finalize").addEventListener("click", async () => {
+  const decisions = {};
+  for (const root of document.querySelectorAll("#cards .card")) {
+    const id = root.dataset.id;
+    const choice = root.querySelector(`input[name="decision-${id}"]:checked`).value;
+    if (choice === "approve") decisions[id] = { action: "approve", content: readContent(root) };
+    else if (choice === "reject") decisions[id] = { action: "reject" };
+    else {
+      const additions = {};
+      for (const box of root.querySelectorAll(".merge-box input[type=checkbox]:checked")) {
+        (additions[box.dataset.field] ??= []).push(box.dataset.value);
+      }
+      decisions[id] = { action: "merge", into: CURRENT.duplicates[id].id, additions };
+    }
+  }
+  const second = Object.entries(decisions).filter(([id, d]) => d.action === "approve" && CURRENT.duplicates[id]);
+  if (second.length && !confirm(`${second.length} draft(s) are already ticketed. Create a second ticket for them anyway?`)) return;
+  const out = $("result");
+  try {
+    $("finalize").disabled = true;
+    const r = await api(`/api/pending/${encodeURIComponent(CURRENT.run.meetingId)}/finalize`, { decisions });
+    out.replaceChildren(
+      ...r.written.map((w) => el("div", { class: "saved" },
+        el("div", { class: "ok" }, `Saved: ${w.title}`),
+        el("div", { class: "hint" }, w.file),
+        el("a", { class: "issue-btn", href: w.issueUrl, target: "_blank", rel: "noopener",
+          onclick: () => { if (!w.issueUrlComplete) navigator.clipboard.writeText(w.body).catch(() => {}); } }, "Open as GitHub issue"),
+        linkForm(w.draftId))),
+      ...r.merged.map((m) => el("div", { class: "ok" }, `Merged into existing draft ${m.into}${m.file ? ` → ${m.file}` : ""}`)),
+      ...r.rejected.map((t) => el("div", { class: "hint" }, `Rejected: ${t}`)),
+      ...(r.outDir ? [el("p", {}, `All files are in ${r.outDir}`, el("br"), el("span", { class: "hint" },
+        "One Markdown file per ticket, manifest.json, and "), el("a", { href: `/out/${encodeURIComponent(CURRENT.run.meetingId)}`, target: "_blank", id: "index-link" }, "index.html"),
+        el("span", { class: "hint" }, " with the same GitHub buttons, for later."))] : []),
+      ...(r.recap ? [recapBox()] : []),
+    );
+    if (r.recap) await refreshRecap(CURRENT.run.meetingId);
+    await loadPending();
+  } catch (e) {
+    $("finalize").disabled = false;
+    out.replaceChildren(el("div", { class: "bad" }, `Error: ${e.message}`));
+  }
+});
+
+(async () => {
+  INFO = await api("/api/info");
+  $("repo").value = INFO.defaultRepo || "";
+  await loadPending();
+})().catch((e) => { $("pending").textContent = e.message; });
+</script>
+</body>
+</html>

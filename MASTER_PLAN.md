@@ -87,7 +87,7 @@ Doing this by hand is slow, actions get missed, tickets end up vague, and the sa
 
 ### 4.2 Technology
 - **TypeScript on Node.js 20+.** Gemini CLI requires this too, so it is already installed.
-- **Official ACP TypeScript SDK** (`@agentclientprotocol/sdk` 2.4.0) to talk to Gemini CLI. Gemini CLI is started with **`--acp`**, checked against `@google/gemini-cli` 0.67.0. The older `--experimental-acp` flag is deprecated, and `geminiArgs` in the config lets you switch to it.
+- **Official ACP TypeScript SDK** (`@agentclientprotocol/sdk` 2.4.0) to talk to Gemini CLI. Gemini CLI is started with **`--acp`**, checked against `@google/gemini-cli` 0.66.0 (your version) and 0.67.0. The older `--experimental-acp` flag is deprecated, and `geminiArgs` in the config lets you switch to it.
 - `zod` for schemas, `commander` for the command-line tool, and a small built-in Node HTTP server plus one static page for the web form, with no heavy framework.
 - `vitest` for tests, using a **fake ACP agent** with scripted replies so the tests run without Gemini or a network.
 
@@ -292,5 +292,5 @@ atefs-minion/
 | DoD rendering | The proposed criteria are rendered as unchecked boxes. The criteria that were not proposed go in a collapsed list. On GitHub a ticked box would read as "done", so nothing is pre-ticked. |
 | Draft file | `# <title>` followed by the issue body. `manifest.json` carries `issue.title`, `issue.body` and `labels: ["atefs-minion"]`, ready for MVP2. |
 | Forced re-run | `--force` on a meeting that was already processed keeps the earlier drafts, continues the file numbering, and proposes the repeated actions as L2 merges. |
-| Licence | `UNLICENSED` (all rights reserved) until the owner chooses a licence. |
+| Licence | Apache-2.0 (see `LICENSE` and `NOTICE`): free to use inside companies, patent grant, attribution kept. |
 | Tests | 39 automated tests: unit, ACP over stdio with a fake Gemini, pipeline on the four samples, CLI, and web. Not tested: a real Gemini CLI (needs the owner's login). |
