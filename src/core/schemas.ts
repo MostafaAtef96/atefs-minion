@@ -107,6 +107,8 @@ export const Draft = z.object({
   flags: z.array(z.string()).default([]),
   /** Where the approved draft was written (absolute path). Set on finalize. */
   file: z.string().nullish(),
+  /** URL of the GitHub issue once it exists (added by the user with "minion link" / the web form). */
+  issueUrl: z.string().nullish(),
 });
 export type Draft = z.infer<typeof Draft>;
 

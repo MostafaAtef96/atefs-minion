@@ -76,6 +76,14 @@ describe("local web form", () => {
     expect(index.status).toBe(200);
     expect(index.text).toContain("Open as GitHub issue");
     expect((await request(`${url}out/..%2F..%2Fetc`, "GET")).status).toBe(404);
+
+    const recap = await request(`${url}api/recap/planning-2026-11-03`, "GET");
+    expect(recap.json.markdown).toContain("1. Edited title");
+    const bad = await request(`${url}api/drafts/${a.id}/issue`, "POST", { url: "nope" });
+    expect(bad.status).toBe(400);
+    const ok = await request(`${url}api/drafts/${a.id}/issue`, "POST", { url: "https://github.com/tj/commander.js/issues/5" });
+    expect(ok.status).toBe(200);
+    expect((await request(`${url}api/recap/planning-2026-11-03`, "GET")).json.markdown).toContain("Ticket: https://github.com/tj/commander.js/issues/5");
   });
 
   it("rejects foreign hosts, origins and non-JSON posts", async () => {

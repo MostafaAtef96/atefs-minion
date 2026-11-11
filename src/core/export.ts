@@ -40,7 +40,7 @@ function esc(s: string): string {
  * out/<meeting>/index.html: a self-contained page (works offline, opened by double-click) listing the
  * meeting's tickets with "Open as GitHub issue" and "Copy Markdown" buttons.
  */
-export function renderIndexPage(meetingTitle: string, repo: string, drafts: Draft[]): string {
+export function renderIndexPage(meetingTitle: string, repo: string, drafts: Draft[], recap = ""): string {
   let mascot = "";
   try {
     mascot = readFileSync(path.join(ASSETS, "minion.svg"), "utf8").replace(/<svg /, '<svg class="logo" ');
@@ -55,7 +55,9 @@ export function renderIndexPage(meetingTitle: string, repo: string, drafts: Draf
     <div class="head"><h2>${i + 1}. ${esc(d.content.title)}</h2><span class="badge">${d.content.type === "Task" ? "Task" : "User Story"}</span></div>
     <p class="meta">Raised in: ${esc(meetings)}${d.refs.length ? ` · ${d.refs.length} code link(s)` : ""}</p>
     <div class="actions">
-      <a class="btn" href="${esc(link.url)}" target="_blank" rel="noopener" data-complete="${link.complete}">Open as GitHub issue</a>
+      ${d.issueUrl
+        ? `<a class="btn" href="${esc(d.issueUrl)}" target="_blank" rel="noopener">View issue</a>`
+        : `<a class="btn" href="${esc(link.url)}" target="_blank" rel="noopener" data-complete="${link.complete}">Open as GitHub issue</a>`}
       <button class="btn secondary" type="button">Copy Markdown</button>
       ${link.complete ? "" : '<span class="hint">Long ticket: the text is copied for you to paste on GitHub.</span>'}
     </div>
@@ -90,11 +92,19 @@ export function renderIndexPage(meetingTitle: string, repo: string, drafts: Draf
 <body>
 <header>${mascot}<div><h1>${esc(meetingTitle)}</h1><p>${drafts.length} ticket draft(s) for ${esc(repo)} · drafted by ${AGENT_NAME}</p></div></header>
 <main>
+  ${recap ? `<section class="card recap"><div class="head"><h2>Meeting recap</h2><button class="btn secondary" type="button" id="copy-recap">Copy recap</button></div>
+    <p class="meta">Ready to paste into an email or chat for the attendees. Ticket links appear once you add them with <code>minion link</code>.</p>
+    <pre id="recap-text">${esc(recap)}</pre></section>` : ""}
   <p class="note">Each button opens GitHub's "New issue" page with the ticket filled in. Nothing is created until you click <b>Submit new issue</b> there.</p>
 ${cards || '<p class="note">No tickets were approved for this meeting.</p>'}
 </main>
 <script>
-  for (const card of document.querySelectorAll(".card")) {
+  const copyRecap = document.getElementById("copy-recap");
+  if (copyRecap) copyRecap.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(document.getElementById("recap-text").textContent).catch(() => {});
+    copyRecap.textContent = "Copied";
+  });
+  for (const card of document.querySelectorAll(".card:not(.recap)")) {
     const text = card.querySelector("pre").textContent;
     const copy = () => navigator.clipboard.writeText(text).catch(() => {});
     card.querySelector("button").addEventListener("click", async (e) => { await copy(); e.target.textContent = "Copied"; });

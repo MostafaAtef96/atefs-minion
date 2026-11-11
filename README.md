@@ -102,6 +102,8 @@ minion run … --no-review         generate drafts now, review later
 minion review                    list meetings waiting for review
 minion review <meeting-id>       review them
 minion web [--port 4711]         local web form + review table (http://127.0.0.1:4711)
+minion recap <meeting-id>        print the meeting recap, ready to send to the attendees
+minion link <draft-id> <url>     record the GitHub issue created for a draft (the recap then shows it)
 minion ledger list               processed meetings and their drafts
 minion ledger show <id>          details of a meeting or draft
 minion ledger remove <draft-id>  remove a draft created by mistake (deletes its file; asks first)
@@ -128,7 +130,8 @@ The server listens on `127.0.0.1` only.
 ```
 out/<meeting-id>/
   01-<title>.md     draft: "# Title" + body in the Standardized Ticket Format, signed by Atef's Minion
-  index.html        open it in a browser: one "Open as GitHub issue" button per ticket
+  index.html        open it in a browser: the meeting recap and one "Open as GitHub issue" button per ticket
+  recap.md          ready-to-send meeting recap for the attendees (see below)
   manifest.json     machine-readable drafts (issue title/body/labels) — input for MVP2
   run.log           every prompt and answer (including retries), each file Gemini read or searched,
                     every tool the app allowed or denied, and the total run time (turn off with --no-log)
@@ -156,6 +159,35 @@ The button opens GitHub's *New issue* page for the repository, with the title, t
 `atefs-minion` label filled in. Check it and click **Submit new issue**. No token is needed, and
 nothing is created until you submit. For a very long ticket the body doesn't fit in the link, so it is
 copied to your clipboard to paste instead.
+
+### Meeting recap
+
+After each review, the minion writes a short recap for the people who attended. It's plain text, so it
+pastes cleanly into an email or chat:
+
+```text
+Recap: Planning 2026-11-03
+
+Decisions and actions:
+1. Include environment variable in missing mandatory option error
+   Owner: Lena Hoffmann · User Story
+   Ticket: https://github.com/tj/commander.js/issues/42
+2. Add regression test suite for Did you mean suggestions
+   Owner: Omar Said · Due: this iteration · Task
+   Ticket: to be created
+
+Discussed, no decision yet:
+- Drop Node 20 support
+```
+
+- **Owners and due dates** come from the meeting itself. If the meeting didn't name an owner, the recap says so
+  instead of guessing.
+- **Ticket links:** after you create an issue on GitHub, add its URL. In the web form, paste it into the field next
+  to the ticket. On the command line, run `minion link <draft-id> <issue-url>` (draft ids are shown by
+  `minion ledger list`). The recap, `index.html` and the recaps of later meetings that repeated the action are
+  updated straight away.
+- **Repeated actions** are listed under "Raised again (already ticketed)", pointing to the existing ticket.
+- **Copying the recap:** use **Copy recap** in the web form or in `index.html`, or run `minion recap <meeting-id>`.
 
 ## Duplicate prevention
 

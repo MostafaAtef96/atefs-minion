@@ -3,6 +3,8 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { decidePermission } from "../src/control/permissions.js";
 import { forTerminal } from "../src/cli/review.js";
+import { isIssueUrl, renderRecap } from "../src/core/recap.js";
+import { emptyLedger } from "../src/core/store.js";
 import { extractJson } from "../src/control/json.js";
 import { loadConfig } from "../src/core/config.js";
 import { mergeDrafts } from "../src/core/finalize.js";
@@ -277,5 +279,36 @@ describe("terminal review display", () => {
     expect(shown).not.toContain("<img");
     expect(shown).not.toContain("atefs-minion:v1");
     expect(shown).toContain("Drafted by **Atef's Minion**");
+  });
+});
+
+describe("meeting recap", () => {
+  it("lists decisions with owners, due dates and tickets, repeats and undecided items", () => {
+    const ledger = emptyLedger();
+    const earlier = draft({ id: "e1", content: { ...content, title: "Earlier ticket" }, issueUrl: "https://github.com/tj/commander.js/issues/7" });
+    ledger.drafts[earlier.id] = earlier;
+    const recap = renderRecap({
+      meetingTitle: "Sprint Review",
+      drafts: [
+        draft({ owner: "Lena", due: "Friday", issueUrl: "https://github.com/tj/commander.js/issues/12" }),
+        draft({ id: "d2", owner: null, content: { ...content, title: "Second", type: "UserStory" } }),
+      ],
+      mergedInto: [{ title: "Raised again", into: "e1" }, { title: "Same meeting repeat", into: "d1" }],
+      skipped: ["Drop Node 20 support"],
+      ledger,
+    });
+    expect(recap).toContain("Recap: Sprint Review\n\nDecisions and actions:");
+    expect(recap).toContain(`1. ${content.title}\n   Owner: Lena · Due: Friday · Task\n   Ticket: https://github.com/tj/commander.js/issues/12`);
+    expect(recap).toContain("2. Second\n   Owner: not named in the meeting · User Story\n   Ticket: to be created");
+    expect(recap).toContain('- Raised again: same as "Earlier ticket", ticket https://github.com/tj/commander.js/issues/7');
+    expect(recap).not.toContain("Same meeting repeat"); // already listed above
+    expect(recap).toContain("Discussed, no decision yet:\n- Drop Node 20 support");
+  });
+
+  it("accepts only GitHub-style issue URLs", () => {
+    expect(isIssueUrl("https://github.com/tj/commander.js/issues/12")).toBe(true);
+    expect(isIssueUrl("https://github-ri.example.com/org/repo/issues/3/")).toBe(true);
+    expect(isIssueUrl("https://github.com/tj/commander.js/pull/12")).toBe(false);
+    expect(isIssueUrl("not a url")).toBe(false);
   });
 });

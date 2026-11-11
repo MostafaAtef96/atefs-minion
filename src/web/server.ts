@@ -6,7 +6,7 @@ import { z } from "zod";
 import type { AgentFactory } from "../control/session.js";
 import type { MinionConfig } from "../core/config.js";
 import { DOD_CRITERIA } from "../core/dod.js";
-import { FIELD_LABELS, finalize, mergeCandidates, type ListField } from "../core/finalize.js";
+import { FIELD_LABELS, finalize, linkIssue, mergeCandidates, readRecap, type ListField } from "../core/finalize.js";
 import { InputError } from "../core/inputs.js";
 import { generate } from "../core/pipeline.js";
 import { renderDraftFile } from "../core/render.js";
@@ -26,6 +26,7 @@ const RunRequest = z.object({
 });
 const FinalizeRequest = z.object({ decisions: z.record(z.string(), ReviewDecision) });
 const PreviewRequest = z.object({ draftId: z.string(), content: TicketContent });
+const LinkRequest = z.object({ url: z.string() });
 
 interface Job {
   id: string;
@@ -132,6 +133,21 @@ export async function startWebServer(opts: WebServerOptions): Promise<{ url: str
         (e: Error) => Object.assign(job, { status: "error", error: e instanceof InputError ? e.problems.join("\n") : e.message }),
       );
       return send(res, 202, { jobId: job.id });
+    }
+
+    if (req.method === "GET" && parts[1] === "recap" && parts[2]) {
+      const recap = await readRecap(store, decodeURIComponent(parts[2])).catch((e: Error) => {
+        throw new HttpError(404, e.message);
+      });
+      return send(res, 200, { markdown: recap });
+    }
+
+    if (req.method === "POST" && parts[1] === "drafts" && parts[2] && parts[3] === "issue") {
+      const body = parse(LinkRequest, await readJson(req));
+      const r = await linkIssue(store, decodeURIComponent(parts[2]), body.url).catch((e: Error) => {
+        throw new HttpError(400, e.message);
+      });
+      return send(res, 200, r);
     }
 
     if (req.method === "GET" && parts[1] === "jobs" && parts[2]) {

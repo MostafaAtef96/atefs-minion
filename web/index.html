@@ -56,6 +56,11 @@
   .saved { display: grid; grid-template-columns: 1fr auto; gap: 2px 16px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
   .saved .hint { grid-column: 1; font-size: 13px; word-break: break-all; }
   .saved .issue-btn { grid-column: 2; grid-row: 1 / span 2; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); text-decoration: none; font-weight: 600; white-space: nowrap; }
+  .saved .link-form { grid-column: 1 / span 2; display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+  .saved .link-form input { flex: 1; padding: 6px 10px; }
+  .saved .link-form button { padding: 6px 12px; }
+  .recap { margin-top: 18px; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .recap .card-head button { padding: 6px 14px; }
   label.pick { display: flex; gap: 8px; align-items: baseline; font-weight: 400; margin: 6px 0; }
   ul.plain { margin: 6px 0; padding-left: 18px; }
   .ok { color: var(--ok); } .bad { color: var(--bad); }
@@ -286,6 +291,38 @@ async function openReview(meetingId) {
   $("review").scrollIntoView({ behavior: "smooth" });
 }
 
+function linkForm(draftId) {
+  const input = el("input", { type: "text", placeholder: "Paste the issue URL once it exists (optional)", "aria-label": "Issue URL" });
+  const status = el("span", { class: "hint" });
+  const save = el("button", { class: "secondary", type: "button", onclick: async () => {
+    try {
+      await api(`/api/drafts/${encodeURIComponent(draftId)}/issue`, { url: input.value.trim() });
+      status.textContent = "Linked";
+      await refreshRecap(CURRENT.run.meetingId);
+    } catch (e) { status.textContent = e.message; }
+  } }, "Link");
+  return el("div", { class: "link-form" }, input, save, status);
+}
+
+function recapBox() {
+  const pre = el("pre", { id: "recap-text" });
+  const copy = el("button", { type: "button", onclick: async () => {
+    await navigator.clipboard.writeText(pre.textContent).catch(() => {});
+    copy.textContent = "Copied";
+  } }, "Copy recap");
+  return el("div", { class: "recap", id: "recap" },
+    el("div", { class: "card-head" }, el("h3", {}, "Meeting recap"), copy),
+    el("div", { class: "hint" }, "Ready to send to the attendees. Ticket links appear as you link the created issues above."),
+    pre);
+}
+
+async function refreshRecap(meetingId) {
+  const pre = document.getElementById("recap-text");
+  if (!pre) return;
+  try { pre.textContent = (await api(`/api/recap/${encodeURIComponent(meetingId)}`)).markdown || ""; }
+  catch (e) { pre.textContent = e.message; }
+}
+
 $("finalize").addEventListener("click", async () => {
   const decisions = {};
   for (const root of document.querySelectorAll("#cards .card")) {
@@ -312,13 +349,16 @@ $("finalize").addEventListener("click", async () => {
         el("div", { class: "ok" }, `Saved: ${w.title}`),
         el("div", { class: "hint" }, w.file),
         el("a", { class: "issue-btn", href: w.issueUrl, target: "_blank", rel: "noopener",
-          onclick: () => { if (!w.issueUrlComplete) navigator.clipboard.writeText(w.body).catch(() => {}); } }, "Open as GitHub issue"))),
+          onclick: () => { if (!w.issueUrlComplete) navigator.clipboard.writeText(w.body).catch(() => {}); } }, "Open as GitHub issue"),
+        linkForm(w.draftId))),
       ...r.merged.map((m) => el("div", { class: "ok" }, `Merged into existing draft ${m.into}${m.file ? ` → ${m.file}` : ""}`)),
       ...r.rejected.map((t) => el("div", { class: "hint" }, `Rejected: ${t}`)),
       ...(r.outDir ? [el("p", {}, `All files are in ${r.outDir}`, el("br"), el("span", { class: "hint" },
         "One Markdown file per ticket, manifest.json, and "), el("a", { href: `/out/${encodeURIComponent(CURRENT.run.meetingId)}`, target: "_blank", id: "index-link" }, "index.html"),
         el("span", { class: "hint" }, " with the same GitHub buttons, for later."))] : []),
+      ...(r.recap ? [recapBox()] : []),
     );
+    if (r.recap) await refreshRecap(CURRENT.run.meetingId);
     await loadPending();
   } catch (e) {
     $("finalize").disabled = false;

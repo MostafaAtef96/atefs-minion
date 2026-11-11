@@ -2,7 +2,7 @@
 import { Command } from "commander";
 import { loadConfig, type MinionConfig } from "../core/config.js";
 import { createInterface } from "node:readline/promises";
-import { finalize, removeDraft, type FinalizeResult } from "../core/finalize.js";
+import { finalize, linkIssue, readRecap, removeDraft, type FinalizeResult } from "../core/finalize.js";
 import { setSignatureImage } from "../core/render.js";
 import { InputError, readNotesFiles } from "../core/inputs.js";
 import { generate } from "../core/pipeline.js";
@@ -45,6 +45,7 @@ function printResult(r: FinalizeResult): void {
   for (const t of r.rejected) console.log(`Rejected: ${t}`);
   if (r.outDir) console.log(`\nDrafts and manifest: ${r.outDir}`);
   if (r.indexPage) console.log(`Open ${r.indexPage} to create the tickets on GitHub (one click each).`);
+  if (r.recap) console.log(`Meeting recap for the attendees: ${r.recap}  (print it with "minion recap <meeting-id>")`);
 }
 
 program
@@ -107,6 +108,23 @@ program
     console.log(`Atef's Minion web form: ${url}  (Ctrl+C to stop)`);
   });
 
+program
+  .command("recap <meetingId>")
+  .description("print the ready-to-send meeting recap (decisions, actions, owners, tickets)")
+  .action(async (meetingId: string) => {
+    const recap = await readRecap(new Store(config().stateDir), meetingId);
+    if (!recap) throw new Error(`No recap for "${meetingId}": nothing was approved or merged in that meeting.`);
+    console.log(recap);
+  });
+
+program
+  .command("link <draftId> <issueUrl>")
+  .description("record the GitHub issue created for a draft; recaps and index pages then show the link")
+  .action(async (draftId: string, issueUrl: string) => {
+    const r = await linkIssue(new Store(config().stateDir), draftId, issueUrl);
+    console.log(`Linked "${r.title}" to ${issueUrl}.${r.meetings.length ? ` Updated recap of ${r.meetings.join(", ")}.` : ""}`);
+  });
+
 const ledgerCmd = program.command("ledger").description("inspect processed meetings and drafts");
 ledgerCmd
   .command("list")
@@ -117,7 +135,10 @@ ledgerCmd
     if (!meetings.length) return console.log("The ledger is empty.");
     for (const [id, m] of meetings) {
       console.log(`${id}  (${m.repo}, ${m.processedAt.slice(0, 10)})`);
-      for (const d of m.drafts) console.log(`   ${d}  ${ledger.drafts[d]?.content.title ?? "?"}`);
+      for (const d of m.drafts) {
+        const draft = ledger.drafts[d];
+        console.log(`   ${d}  ${draft?.content.title ?? "?"}${draft?.issueUrl ? `  -> ${draft.issueUrl}` : ""}`);
+      }
     }
   });
 ledgerCmd

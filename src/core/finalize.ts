@@ -3,6 +3,7 @@ import { copyFile, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promi
 import path from "node:path";
 import type { MinionConfig } from "./config.js";
 import { newIssueLink, renderIndexPage } from "./export.js";
+import { isIssueUrl, renderRecap } from "./recap.js";
 import { AGENT_LABEL, AGENT_NAME, renderDraftFile, renderIssueBody } from "./render.js";
 import type { Draft, Ledger, MergeAdditions, PendingRun, ReviewDecision, TicketContent, VerifiedRef } from "./schemas.js";
 import type { Store } from "./store.js";
@@ -91,6 +92,8 @@ export interface FinalizeResult {
   written: { draftId: string; file: string; title: string; issueUrl: string; issueUrlComplete: boolean; body: string }[];
   /** out/<meeting>/index.html with "Open as GitHub issue" buttons (null when nothing was written). */
   indexPage: string | null;
+  /** out/<meeting>/recap.md, the ready-to-send meeting recap (null when nothing was decided). */
+  recap: string | null;
   merged: { draftId: string; into: string; file: string | null }[];
   rejected: string[];
 }
@@ -110,7 +113,7 @@ export async function finalize(
   }
   const ledger = await deps.store.loadLedger();
   const outDir = path.join(deps.config.outDir, run.meetingId);
-  const result: FinalizeResult = { outDir: null, written: [], merged: [], rejected: [], indexPage: null };
+  const result: FinalizeResult = { outDir: null, written: [], merged: [], rejected: [], indexPage: null, recap: null };
   // A forced re-run of a meeting keeps the drafts approved earlier and continues the numbering.
   const previous = ledger.meetings[run.meetingId];
   const meetingDraftIds: string[] = [...(previous?.drafts ?? [])];
@@ -151,11 +154,12 @@ export async function finalize(
     repo: run.repo,
     inputHash: run.inputHash,
     processedAt: new Date().toISOString(),
-    outDir: approved.length || previous?.outDir ? outDir : "",
+    outDir: approved.length || result.merged.length || previous?.outDir ? outDir : "",
     drafts: meetingDraftIds,
   };
 
-  if (approved.length) {
+  if (approved.length || result.merged.length) {
+    await mkdir(outDir, { recursive: true });
     result.outDir = outDir;
     await writeManifest(ledger, run.meetingId, {
       skipped: run.skipped.map((s) => s.title),
@@ -164,6 +168,7 @@ export async function finalize(
       commitSha: run.commitSha,
     });
     result.indexPage = path.join(outDir, "index.html");
+    result.recap = path.join(outDir, "recap.md");
     const log = deps.store.pendingLogFile(run.meetingId);
     if (deps.config.logPrompts && existsSync(log)) await copyFile(log, path.join(outDir, "run.log"));
   }
@@ -228,7 +233,40 @@ export async function writeManifest(ledger: Ledger, meetingId: string, extras: M
   };
   await writeAtomic(file, JSON.stringify(manifest, null, 2));
   const live = meeting.drafts.map((id) => ledger.drafts[id]).filter((d): d is Draft => Boolean(d));
-  await writeAtomic(path.join(meeting.outDir, "index.html"), renderIndexPage(meeting.title, meeting.repo, live));
+  const recap = renderRecap({
+    meetingTitle: meeting.title,
+    drafts: live,
+    mergedInto: manifest.mergedInto as { title: string; into: string }[],
+    skipped: manifest.skipped as string[],
+    ledger,
+  });
+  await writeAtomic(path.join(meeting.outDir, "recap.md"), recap);
+  await writeAtomic(path.join(meeting.outDir, "index.html"), renderIndexPage(meeting.title, meeting.repo, live, recap));
+}
+
+/** Read a meeting's recap (null when the meeting has no output folder). */
+export async function readRecap(store: Store, meetingId: string): Promise<string | null> {
+  const meeting = (await store.loadLedger()).meetings[meetingId];
+  if (!meeting) throw new Error(`No meeting "${meetingId}". See "minion ledger list".`);
+  if (!meeting.outDir) return null;
+  return readFile(path.join(meeting.outDir, "recap.md"), "utf8").catch(() => null);
+}
+
+/**
+ * Record the GitHub issue created for a draft. The draft file, the manifests, index pages and recaps of
+ * every meeting are regenerated, so the recap shows the ticket link.
+ */
+export async function linkIssue(store: Store, draftId: string, url: string): Promise<{ title: string; meetings: string[] }> {
+  if (!isIssueUrl(url)) throw new Error(`Not a GitHub issue URL: ${url} (expected https://github.com/owner/repo/issues/123)`);
+  const ledger = await store.loadLedger();
+  const draft = ledger.drafts[draftId];
+  if (!draft) throw new Error(`No draft with id "${draftId}". See "minion ledger list".`);
+  draft.issueUrl = url.trim().replace(/\/$/, "");
+  await store.saveLedger(ledger);
+  if (draft.file && existsSync(path.dirname(draft.file))) await writeFile(draft.file, renderDraftFile(draft), "utf8");
+  const meetings = Object.keys(ledger.meetings);
+  for (const m of meetings) await writeManifest(ledger, m);
+  return { title: draft.content.title, meetings: meetings.filter((m) => ledger.meetings[m]!.drafts.includes(draftId)) };
 }
 
 /** Remove a draft created by mistake: deletes it from the ledger and its meeting, deletes its file, rewrites the manifest. */
