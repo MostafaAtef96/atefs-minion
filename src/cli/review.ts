@@ -40,12 +40,17 @@ export async function editInEditor(content: TicketContent): Promise<TicketConten
   }
 }
 
+/** Hide what only matters on GitHub (signature image tag, hidden metadata comment) when showing a draft in the terminal. */
+export function forTerminal(markdown: string): string {
+  return markdown.replace(/<!--[\s\S]*?-->\n?/g, "").replace(/<img [^>]*> ?/g, "").trimEnd();
+}
+
 function describeDuplicate(p: PendingDraft, ledger: Ledger): string[] {
   if (p.dedup.status !== "duplicate" || !p.dedup.duplicateOf) return [];
   const target = ledger.drafts[p.dedup.duplicateOf];
   if (!target) return [];
   const lines = [
-    `🔁 Already ticketed (${p.dedup.layer === "L2" ? "same title" : "same work, found by Gemini"}): "${target.content.title}" [${target.id}]`,
+    `Already ticketed (${p.dedup.layer === "L2" ? "same title" : "same work, found by Gemini"}): "${target.content.title}" [${target.id}]`,
     `   raised in: ${target.sources.map((s) => s.meetingTitle).join(", ")}`,
   ];
   if (p.dedup.reason && p.dedup.layer !== "L2") lines.push(`   reason: ${p.dedup.reason}`);
@@ -94,7 +99,7 @@ export async function reviewInTerminal(run: PendingRun, ledger: Ledger): Promise
     throw new Error('Interactive review needs a terminal. Use "minion web" to review in the browser.');
   }
   console.log(`\n${RULE}\nReview: ${run.meetingTitle} → ${run.repo}  (${run.drafts.length} draft(s))\n${RULE}`);
-  for (const w of run.warnings) console.log(`⚠️  ${w}`);
+  for (const w of run.warnings) console.log(`Warning: ${w}`);
   if (run.skipped.length) {
     console.log("\nNot drafted (discussion only):");
     for (const s of run.skipped) console.log(`  • ${s.title}`);
@@ -106,7 +111,7 @@ export async function reviewInTerminal(run: PendingRun, ledger: Ledger): Promise
     const target = p.dedup.status === "duplicate" && p.dedup.duplicateOf ? ledger.drafts[p.dedup.duplicateOf] : undefined;
     for (;;) {
       console.log(`\n${RULE}\nDraft ${i + 1}/${run.drafts.length}\n${RULE}`);
-      console.log(renderDraftFile({ ...p.draft, content }));
+      console.log(forTerminal(renderDraftFile({ ...p.draft, content })));
       for (const l of target ? describeDuplicate(p, ledger) : []) console.log(l);
       const toggle = `[t]ype → ${content.type === "Task" ? "UserStory" : "Task"}`;
       const options = target

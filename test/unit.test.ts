@@ -2,6 +2,7 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { decidePermission } from "../src/control/permissions.js";
+import { forTerminal } from "../src/cli/review.js";
 import { extractJson } from "../src/control/json.js";
 import { loadConfig } from "../src/core/config.js";
 import { mergeDrafts } from "../src/core/finalize.js";
@@ -267,5 +268,14 @@ describe("importing drafts into GitHub", () => {
     expect(html.match(/Open as GitHub issue/g)).toHaveLength(2);
     expect(html).toContain('href="https://github.com/tj/commander.js/issues/new?title=');
     expect(html).toContain('<svg class="logo"');
+  });
+});
+
+describe("terminal review display", () => {
+  it("hides the signature image tag and the hidden metadata", () => {
+    const shown = forTerminal(renderDraftFile(draft()));
+    expect(shown).not.toContain("<img");
+    expect(shown).not.toContain("atefs-minion:v1");
+    expect(shown).toContain("Drafted by **Atef's Minion**");
   });
 });
