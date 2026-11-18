@@ -1,6 +1,6 @@
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { normalizeRepo, sha256, slugify } from "./text.js";
+import { normalizeProject, normalizeRepo, sha256, slugify } from "./text.js";
 
 export interface NotesFile {
   name: string;
@@ -9,6 +9,8 @@ export interface NotesFile {
 
 export interface RunInputs {
   notes: NotesFile[];
+  /** GitHub project (board) to add new issues to: "owner/number" or the board's link. Optional. */
+  project?: string | null;
   /** Local clone of the repository; null/empty = the meeting is not about code (no code search). */
   srcPath?: string | null;
   meetingTitle: string;
@@ -53,6 +55,9 @@ export async function validateInputs(inputs: RunInputs): Promise<ValidatedInputs
   const title = inputs.meetingTitle.trim();
   if (!title) errors.push("Meeting title is required.");
   const repo = normalizeRepo(inputs.repo) ?? "";
+  const projectRaw = (inputs.project ?? "").trim();
+  const project = projectRaw ? normalizeProject(projectRaw) : null;
+  if (projectRaw && !project) errors.push(`GitHub project must be "owner/number" or the project board's link (got "${projectRaw}").`);
   if (!repo) errors.push(`GitHub repository must be "owner/name" or its web address (got "${inputs.repo}").`);
   const srcRaw = (inputs.srcPath ?? "").trim();
   const srcPath = srcRaw ? path.resolve(srcRaw) : null;
@@ -68,7 +73,7 @@ export async function validateInputs(inputs: RunInputs): Promise<ValidatedInputs
       .sort()
       .join("\n\u0000\n"),
   ).slice(0, 32);
-  return { ...inputs, notes, meetingTitle: title, repo, srcPath, meetingId: slugify(title), inputHash };
+  return { ...inputs, notes, meetingTitle: title, repo, project, srcPath, meetingId: slugify(title), inputHash };
 }
 
 /**

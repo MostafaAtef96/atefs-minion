@@ -14,7 +14,7 @@ import { meetingTitleFromFile, validateInputs } from "../src/core/inputs.js";
 import { permalink, verifyRefs } from "../src/core/refs.js";
 import { AGENT_NAME, DEFAULT_SIGNATURE_IMAGE, parseEditable, renderDraftFile, renderEditable, setSignatureImage } from "../src/core/render.js";
 import type { Draft, TicketContent } from "../src/core/schemas.js";
-import { fingerprint, normalizeRepo, normalizeTitle, repoWebUrl, slugify } from "../src/core/text.js";
+import { fingerprint, normalizeProject, normalizeRepo, normalizeTitle, repoWebUrl, slugify } from "../src/core/text.js";
 import { makeRepo, tempDir } from "./helpers.js";
 
 const content: TicketContent = {
@@ -363,5 +363,34 @@ describe("repositories on github.com and on GitHub Enterprise servers", () => {
   it("accepts a pasted repository link as input", async () => {
     const v = await validateInputs({ notes: [{ name: "n.md", content: "x" }], srcPath: null, meetingTitle: "T", repo: "https://ghe.example.com/TEAM/repo_aD_VG" });
     expect(v.repo).toBe("ghe.example.com/TEAM/repo_aD_VG");
+  });
+});
+
+describe("adding new issues to a GitHub project board", () => {
+  it.each([
+    ["TEAM/9", "TEAM/9"],
+    ["https://ghe.example.com/orgs/TEAM/projects/9/views/1?filterQuery=", "TEAM/9"],
+    ["https://github.com/users/someone/projects/3", "someone/3"],
+  ])("%s", (input, expected) => {
+    expect(normalizeProject(input)).toBe(expected);
+  });
+
+  it.each(["TEAM", "https://ghe.example.com/TEAM/repo", "TEAM/nine"])("rejects %s", (input) => {
+    expect(normalizeProject(input)).toBeNull();
+  });
+
+  it("puts the project into the new-issue link, also when the body does not fit", () => {
+    const link = newIssueLink(draft({ repo: "ghe.example.com/TEAM/repo", project: "TEAM/9" }));
+    expect(new URL(link.url).searchParams.get("projects")).toBe("TEAM/9");
+    const long = newIssueLink(draft({ project: "TEAM/9", content: { ...content, inScope: Array.from({ length: 200 }, (_, i) => `Scope item ${i} with words`) } }));
+    expect(long.complete).toBe(false);
+    expect(new URL(long.url).searchParams.get("projects")).toBe("TEAM/9");
+    expect(new URL(newIssueLink(draft()).url).searchParams.get("projects")).toBeNull();
+  });
+
+  it("validates the project input", async () => {
+    const base = { notes: [{ name: "n.md", content: "x" }], srcPath: null, meetingTitle: "T", repo: "o/r" };
+    expect((await validateInputs({ ...base, project: "https://ghe.example.com/orgs/TEAM/projects/9/views/1" })).project).toBe("TEAM/9");
+    await expect(validateInputs({ ...base, project: "not a project" })).rejects.toThrow(/project board/);
   });
 });

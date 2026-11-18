@@ -22,6 +22,7 @@ const RunRequest = z.object({
   src: z.string().optional(),
   meeting: z.string().min(1),
   repo: z.string().min(1),
+  project: z.string().optional(),
   force: z.boolean().optional(),
 });
 const FinalizeRequest = z.object({ decisions: z.record(z.string(), ReviewDecision) });
@@ -117,7 +118,7 @@ export async function startWebServer(opts: WebServerOptions): Promise<{ url: str
     if (parts[0] !== "api") throw new HttpError(404, "Not found");
 
     if (req.method === "GET" && url.pathname === "/api/info") {
-      return send(res, 200, { defaultRepo: config.defaultRepo ?? "", dod: DOD_CRITERIA, outDir: config.outDir });
+      return send(res, 200, { defaultRepo: config.defaultRepo ?? "", defaultProject: config.defaultProject ?? "", dod: DOD_CRITERIA, outDir: config.outDir });
     }
 
     if (req.method === "POST" && url.pathname === "/api/runs") {
@@ -126,7 +127,7 @@ export async function startWebServer(opts: WebServerOptions): Promise<{ url: str
       jobs.set(job.id, job);
       const note = (m: string) => job.progress.push(m);
       generate(
-        { notes: body.notes, srcPath: body.src?.trim() || null, meetingTitle: body.meeting, repo: body.repo, force: body.force },
+        { notes: body.notes, srcPath: body.src?.trim() || null, meetingTitle: body.meeting, repo: body.repo, project: body.project?.trim() || null, force: body.force },
         { agents: opts.agents((a) => note(`  ↳ ${a}`)), store, config, onProgress: note },
       ).then(
         (run) => Object.assign(job, { status: "done", meetingId: run.meetingId }),
