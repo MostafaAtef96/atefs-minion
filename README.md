@@ -23,8 +23,11 @@ In the browser:
    (reviewed one after another, with a combined recap at the end) or one meeting (notes + transcript).
 2. **GitHub ticket repository:** `owner/name`, or simply paste the repository's link. Links on a company GitHub
    server work too, and all links then point to that server. It's remembered for next time.
-3. **Code links:** fill in your local code folder, or tick **Not about code**.
-4. **Generate drafts,** review each ticket, then **Save decisions.** You get the meeting recap (with *Copy recap*) and
+3. **GitHub project (optional):** paste your project board's link (for example `https://…/orgs/OWNER/projects/9`).
+   New issues created with *Open as GitHub issue* are then added to that board. GitHub doesn't add repository
+   issues to a board by itself, and Status or Iteration are still set on the board as usual.
+4. **Code links:** fill in your local code folder, or tick **Not about code**.
+5. **Generate drafts,** review each ticket, then **Save decisions.** You get the meeting recap (with *Copy recap*) and
    an *Open as GitHub issue* button per ticket.
 
 **Prefer the command line?** Open a Command Prompt in the minion folder (in PowerShell, type `.\minion`):
@@ -35,6 +38,8 @@ minion run --notes "C:\Downloads\Sprint Review - Notes by Gemini.md" --repo my-o
 
 - **Meeting title:** taken from the file name.
 - **Code links:** add `--src C:\work\my-repo`. Leave it out for meetings that aren't about code.
+- **Project board:** add `--project "<board link>"` so new issues land on it (or set `defaultProject` in
+  `minion.config.json`).
 - **Several meetings of the same project:** list the files and add `--each`, e.g.
   `minion run --each --notes "Planning.md" "Review.md" --repo my-org/my-repo`. You get a combined recap at the end.
 - **Review keys:** `a` approve, `e` edit (Notepad), `t` switch Task/User Story, `r` reject, `m` merge into an
@@ -87,6 +92,7 @@ Copy `minion.config.example.json` to `minion.config.json` in the folder you run 
 | `geminiArgs` | `["--acp"]` | Arguments that start Gemini CLI in ACP mode. Very old versions need `["--experimental-acp"]` |
 | `model` | *(Gemini CLI default)* | Model, passed to Gemini CLI as `-m` |
 | `defaultRepo` | – | Repository used when `--repo` is not given |
+| `defaultProject` | – | GitHub project board new issues are added to (its link, or `owner/number`) |
 | `outDir` | `out` | Where approved drafts are written |
 | `stateDir` | `~/.atefs-minion` | Holds the de-duplication ledger and the runs waiting for review |
 | `maxRetries` | `2` | Retries when Gemini's answer doesn't match the expected JSON |
@@ -172,9 +178,14 @@ Each draft:
 
 - **Sections:** Objective, In Scope, Out of Scope, Dependencies, Acceptance Criteria, Definition of Done
   (the agent proposes which criteria apply; the team tailors them during refinement), and Deliverable.
-- **Source & Context:** the meeting, verbatim quotes, and **links to the related code**. The links point to
-  the exact commit and line ranges.
-- **Never invented:** a section the meeting didn't cover says *"To be defined during refinement"*.
+- **Only the team's standard sections.** The meeting context (quotes, which meeting) is shown under
+  **Objective** as "From the meeting". The related code is listed under **In Scope** as "Code involved", with
+  links to the exact commit and lines. The parent Stakeholder Requirement is listed under **Dependencies**,
+  because it must be linked before the ticket is Ready.
+- **Filled from the discussion,** including small details. Items the meeting only implied are marked
+  "(to confirm)", so the team can check them during refinement.
+- **No made-up facts:** names, numbers and dates come only from the meeting. A section the meeting gives no basis
+  for at all says *"To be defined during refinement"*.
   Story Points are never estimated and Sub-Tasks are never created.
 - **Signed:** a visible footer, `Drafted by Atef's Minion` with the green mascot next to it (set `signatureImage` to `null` in the config for text only), plus a hidden
   `<!-- atefs-minion:v1 {...} -->` block used for duplicate detection.

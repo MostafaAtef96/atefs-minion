@@ -16,6 +16,8 @@ export const MinionConfig = z.object({
   /** Ledger + pending runs live here. */
   stateDir: z.string().default(path.join(os.homedir(), ".atefs-minion")),
   defaultRepo: z.string().nullish(),
+  /** GitHub project (board) new issues are added to: "owner/number" or the board's link. */
+  defaultProject: z.string().nullish(),
   /** Retries when Gemini returns output that does not match the expected JSON schema. */
   maxRetries: z.number().int().min(0).max(5).default(2),
   /** Write prompts/responses to run.log. */

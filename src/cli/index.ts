@@ -57,13 +57,14 @@ program
   .requiredOption("-n, --notes <files...>", "exported Gemini notes (.md or .txt); with --each, one file per meeting")
   .option("-m, --meeting <title>", "meeting title (default: taken from the file name)")
   .option("-r, --repo <owner/name>", "GitHub repository the tickets are for")
+  .option("-p, --project <link>", "GitHub project board to add the new issues to (its link, or owner/number)")
   .option("-s, --src <path>", "local copy (git clone) of that repository, for code links; leave out if the meeting is not about code")
   .option("--no-code", "do not look at any code, even if --src or a default is set")
   .option("--each", "every --notes file is a separate meeting of the same project (processed one after another)")
   .option("-f, --force", "process again even if a meeting was already processed")
   .option("--no-review", "generate drafts only; review later with `minion review`")
   .action(async (opts: {
-    notes: string[]; meeting?: string; src?: string; code: boolean; each?: boolean; repo?: string; force?: boolean; review: boolean;
+    notes: string[]; meeting?: string; src?: string; code: boolean; each?: boolean; repo?: string; project?: string; force?: boolean; review: boolean;
   }) => {
     const cfg = config();
     const store = new Store(cfg.stateDir);
@@ -84,7 +85,7 @@ program
       let run;
       try {
         run = await generate(
-          { notes: await readNotesFiles(files), srcPath, meetingTitle, repo, force: opts.force },
+          { notes: await readNotesFiles(files), srcPath, meetingTitle, repo, project: opts.project ?? cfg.defaultProject ?? null, force: opts.force },
           { agents, store, config: cfg, onProgress: progress },
         );
       } catch (e) {

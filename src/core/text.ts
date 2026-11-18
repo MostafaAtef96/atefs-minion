@@ -91,6 +91,19 @@ export function normalizeRepo(input: string): string | null {
   return host === "github.com" ? `${owner}/${name}` : `${host}/${owner}/${name}`;
 }
 
+/**
+ * GitHub project (board) as "owner/number", the form GitHub's new-issue link expects.
+ * Accepts "owner/number" or a pasted board link such as
+ * "https://host/orgs/OWNER/projects/9/views/1?filterQuery=" (also /users/<name>/projects/<n>).
+ */
+export function normalizeProject(input: string): string | null {
+  const s = input.trim();
+  const short = /^([A-Za-z0-9_.-]+)\/(\d+)$/.exec(s);
+  if (short) return `${short[1]}/${short[2]}`;
+  const url = /^https?:\/\/[^/]+\/(?:orgs|users)\/([A-Za-z0-9_.-]+)\/projects\/(\d+)(?:[/?#].*)?$/i.exec(s);
+  return url ? `${url[1]}/${url[2]}` : null;
+}
+
 /** Web address of a canonical repository id, e.g. "https://github.com/owner/name". */
 export function repoWebUrl(repo: string): string {
   return repo.split("/").length === 3 ? `https://${repo}` : `https://github.com/${repo}`;

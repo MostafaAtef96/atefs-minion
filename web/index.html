@@ -62,6 +62,7 @@
   .recap { margin-top: 18px; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
   .recap .card-head button { padding: 6px 14px; }
   input:disabled { opacity: .5; cursor: not-allowed; }
+  .multi[hidden] { display: none; }
   .multi { display: grid; gap: 6px; margin: 10px 0 2px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; }
   .multi label, label.inline { display: flex; gap: 8px; align-items: baseline; font-weight: 400; margin: 6px 0 0; }
   .queue { margin: 0 0 10px; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--code); border-radius: 4px; }
@@ -93,6 +94,8 @@
         <input id="repo" type="text" placeholder="owner/name or https://…/owner/name">
       </div>
     </div>
+    <label for="project">GitHub project <span class="hint">optional · paste the project board's link so new issues land on it</span></label>
+    <input id="project" type="text" placeholder="https://…/orgs/OWNER/projects/9">
     <label for="src">Local code folder <span class="hint">your local copy of the repository, for code links</span></label>
     <input id="src" type="text" placeholder="C:\work\my-repo">
     <label class="inline"><input id="nocode" type="checkbox"> Not about code <span class="hint">(no code search, no code links)</span></label>
@@ -174,9 +177,10 @@ $("notes").addEventListener("change", () => {
 
 // ---- remembered fields (this browser only)
 const remember = {
-  load() { try { for (const id of ["repo", "src"]) { const v = localStorage.getItem(`minion.${id}`); if (v && !$(id).value) $(id).value = v; }
+  load() { try { for (const id of ["repo", "project", "src"]) { const v = localStorage.getItem(`minion.${id}`); if (v && !$(id).value) $(id).value = v; }
     $("nocode").checked = localStorage.getItem("minion.nocode") === "1"; } catch {} },
   save() { try { localStorage.setItem("minion.repo", $("repo").value.trim()); localStorage.setItem("minion.src", $("src").value.trim());
+    localStorage.setItem("minion.project", $("project").value.trim());
     localStorage.setItem("minion.nocode", $("nocode").checked ? "1" : "0"); } catch {} },
 };
 
@@ -205,7 +209,8 @@ async function runMeeting(item) {
   progress.textContent = head + "Starting…";
   const notes = await Promise.all(item.files.map(async (f) => ({ name: f.name, content: await f.text() })));
   const { jobId } = await api("/api/runs", {
-    notes, src: $("nocode").checked ? "" : $("src").value.trim(), meeting: item.title, repo: $("repo").value.trim(), force: $("force").checked,
+    notes, src: $("nocode").checked ? "" : $("src").value.trim(), meeting: item.title, repo: $("repo").value.trim(),
+    project: $("project").value.trim(), force: $("force").checked,
   });
   for (;;) {
     await new Promise((r) => setTimeout(r, 1000));
@@ -487,6 +492,7 @@ $("finalize").addEventListener("click", async () => {
 (async () => {
   INFO = await api("/api/info");
   $("repo").value = INFO.defaultRepo || "";
+  $("project").value = INFO.defaultProject || "";
   remember.load();
   syncForm();
   await loadPending();

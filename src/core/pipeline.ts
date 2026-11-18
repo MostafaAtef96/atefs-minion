@@ -202,6 +202,7 @@ export async function generate(rawInputs: RunInputs, deps: PipelineDeps): Promis
         repo,
         commitSha: sha,
         content,
+        project: inputs.project ?? null,
         owner: action.owner ?? null,
         due: action.due ?? null,
         sources: [{ meetingId, meetingTitle: inputs.meetingTitle, quotes: action.quotes }],

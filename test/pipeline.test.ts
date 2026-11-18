@@ -144,8 +144,8 @@ describe("pipeline on the synthetic samples", () => {
     expect(r3.written.map((w) => w.title)).toEqual(["Reject options that share the same environment variable"]);
 
     const md = await readFile(original.file, "utf8");
-    expect(md).toContain("**Raised in:** Planning 2026-11-03");
-    expect(md).toContain("**Raised in:** Sprint Review 2026-11-17");
+    expect(md).toContain("**From the meeting:** Planning 2026-11-03");
+    expect(md).toContain("**From the meeting:** Sprint Review 2026-11-17");
     expect(md).toContain("Works for options on parent commands"); // picked by the reviewer
     expect(md).not.toContain("Error names the environment variable"); // offered but not picked
     expect(md).toContain('"meetings":["planning-2026-11-03","sprint-review-2026-11-17"]');
@@ -165,7 +165,7 @@ describe("pipeline on the synthetic samples", () => {
     expect(run.drafts[0]!.draft.refs).toEqual([]);
     expect(run.drafts[0]!.draft.owner).toBe("Priya Nair");
     const r = await finalize(run, approveAll(run), { store, config });
-    expect(await readFile(r.written[0]!.file, "utf8")).toContain("**Related code:** _none identified_");
+    expect(await readFile(r.written[0]!.file, "utf8")).not.toContain("Code involved");
   });
 
   it("retries invalid JSON and falls back to an empty, flagged draft when retries run out", async () => {
@@ -275,6 +275,6 @@ describe("meetings that are not about code", () => {
     expect(agents.prompts[0]).toContain("This meeting is not about code");
     expect(run.warnings).toEqual([]);
     const r = await finalize(run, approveAll(run), { store, config });
-    expect(await readFile(r.written[0]!.file, "utf8")).toContain("**Related code:** _none identified_");
+    expect(await readFile(r.written[0]!.file, "utf8")).not.toContain("Code involved");
   });
 });

@@ -24,7 +24,8 @@ export interface IssueLink {
 export function newIssueLink(draft: Draft): IssueLink {
   const title = draft.content.title;
   const body = renderIssueBody(draft);
-  const base = `${repoWebUrl(draft.repo)}/issues/new?title=${encodeURIComponent(title)}&labels=${encodeURIComponent(AGENT_LABEL)}`;
+  const project = draft.project ? `&projects=${encodeURIComponent(draft.project)}` : "";
+  const base = `${repoWebUrl(draft.repo)}/issues/new?title=${encodeURIComponent(title)}&labels=${encodeURIComponent(AGENT_LABEL)}${project}`;
   const full = `${base}&body=${encodeURIComponent(body)}`;
   return full.length <= MAX_ISSUE_URL
     ? { url: full, complete: true, title, body }
