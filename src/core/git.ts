@@ -1,3 +1,4 @@
+import { normalizeRepo } from "./text.js";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
@@ -48,8 +49,10 @@ export async function listTrackedFiles(srcPath: string): Promise<Set<string>> {
   return new Set(out.split("\0").filter(Boolean));
 }
 
-/** True when `originUrl` points at github.com/<repo> (https or ssh form). */
+/** True when the clone's origin (https or ssh form) is the same repository, on the same server. */
 export function originMatchesRepo(originUrl: string, repo: string): boolean {
+  const origin = normalizeRepo(originUrl);
+  if (origin) return origin.toLowerCase() === repo.toLowerCase();
   const m = /github\.com[:/]+([^/]+\/[^/]+?)(?:\.git)?\/?$/i.exec(originUrl.trim());
   return Boolean(m && m[1]!.toLowerCase() === repo.toLowerCase());
 }

@@ -1,3 +1,4 @@
+import { repoWebUrl } from "./text.js";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { CodeRef, VerifiedRef } from "./schemas.js";
@@ -6,9 +7,10 @@ export const MAX_REF_SPAN = 400;
 export const MAX_END_OVERSHOOT = 3;
 
 export function permalink(repo: string, sha: string, filePath: string, start: number, end: number): string {
+  // repo is "owner/name" (github.com) or "host/owner/name" (GitHub Enterprise)
   const anchor = start === end ? `L${start}` : `L${start}-L${end}`;
   const encoded = filePath.split("/").map(encodeURIComponent).join("/");
-  return `https://github.com/${repo}/blob/${sha}/${encoded}#${anchor}`;
+  return `${repoWebUrl(repo)}/blob/${sha}/${encoded}#${anchor}`;
 }
 
 /** Normalise an LLM-provided path to a repo-relative POSIX path, or null if it escapes the repo. */

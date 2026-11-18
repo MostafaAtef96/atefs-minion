@@ -21,7 +21,8 @@ In the browser:
 1. **Choose the notes:** export the "Notes by Gemini" document (*File → Download → Markdown*) and pick the file.
    You can pick **several files**; the form then asks whether they're separate meetings of the same project
    (reviewed one after another, with a combined recap at the end) or one meeting (notes + transcript).
-2. **GitHub ticket repository:** `owner/name` (it's remembered for next time).
+2. **GitHub ticket repository:** `owner/name`, or simply paste the repository's link. Links on a company GitHub
+   server work too, and all links then point to that server. It's remembered for next time.
 3. **Code links:** fill in your local code folder, or tick **Not about code**.
 4. **Generate drafts,** review each ticket, then **Save decisions.** You get the meeting recap (with *Copy recap*) and
    an *Open as GitHub issue* button per ticket.
@@ -91,7 +92,7 @@ Copy `minion.config.example.json` to `minion.config.json` in the folder you run 
 | `maxRetries` | `2` | Retries when Gemini's answer doesn't match the expected JSON |
 | `logPrompts` | `true` | Keep prompts and answers in `run.log` (local only) |
 | `promptTimeoutSec` | `600` | Timeout for a single Gemini turn, in seconds |
-| `signatureImage` | mascot PNG in this repo | Image URL shown next to the ticket signature; `null` = text only |
+| `signatureImage` | mascot PNG in this repo | Image URL shown next to the ticket signature; `null` = text only. A company GitHub server may block images from github.com: if the mascot shows as a broken image there, set this to `null` |
 | `webPort` | `4711` | Port of the local web form |
 
 ## Export the meeting notes

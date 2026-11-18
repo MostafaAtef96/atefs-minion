@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { AGENT_LABEL, AGENT_NAME, renderIssueBody } from "./render.js";
 import type { Draft } from "./schemas.js";
+import { repoWebUrl } from "./text.js";
 
 /** Browsers and GitHub reliably accept URLs up to about 8 000 characters. */
 export const MAX_ISSUE_URL = 8000;
@@ -23,7 +24,7 @@ export interface IssueLink {
 export function newIssueLink(draft: Draft): IssueLink {
   const title = draft.content.title;
   const body = renderIssueBody(draft);
-  const base = `https://github.com/${draft.repo}/issues/new?title=${encodeURIComponent(title)}&labels=${encodeURIComponent(AGENT_LABEL)}`;
+  const base = `${repoWebUrl(draft.repo)}/issues/new?title=${encodeURIComponent(title)}&labels=${encodeURIComponent(AGENT_LABEL)}`;
   const full = `${base}&body=${encodeURIComponent(body)}`;
   return full.length <= MAX_ISSUE_URL
     ? { url: full, complete: true, title, body }
