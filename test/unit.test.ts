@@ -98,15 +98,20 @@ describe("read-only permission policy", () => {
 describe("rendering", () => {
   it("follows the Standardized Ticket Format and is signed", () => {
     const md = renderDraftFile(draft());
-    for (const h of ["## Objective", "## In Scope", "## Out of Scope", "## Dependencies", "## Acceptance Criteria", "## Definition of Done", "## Deliverable", "## Source & Context"]) {
+    for (const h of ["## Objective", "## In Scope", "## Out of Scope", "## Dependencies", "## Acceptance Criteria", "## Definition of Done", "## Deliverable"]) {
       expect(md).toContain(h);
     }
     expect(md).toContain(`Drafted by **${AGENT_NAME}**`);
     expect(md).toMatch(/<!-- atefs-minion:v1 \{"fingerprint":"[0-9a-f]{16}","meetings":\["m1"\],"draft_id":"d1"\} -->/);
-    expect(md).toContain("- [ ] 7. Software Detailed Design and Unit Construction");
-    expect(md).toContain("_To be defined during refinement_"); // empty Dependencies
+    expect(md).toContain("- [ ] Software Detailed Design and Unit Construction");
+    expect(md).not.toContain("Source & Context");
+    expect(md).not.toContain("Proposed by the agent");
+    expect(md).not.toMatch(/- \[ \] \d+\./); // no criterion numbers
+    expect(md).toContain("## Dependencies\n- Parent Stakeholder Requirement: _to be linked before the ticket is Ready_");
+    expect(md).toContain("**From the meeting:** Planning\n");
+    expect(renderDraftFile(draft({ content: { ...content, outOfScope: [] } }))).toContain("## Out of Scope\n_To be defined during refinement_");
     expect(md).toContain('> "I\'ll take it" — Lena, 00:02:10');
-    expect(md).toContain("_none identified_");
+    expect(md).not.toContain("Code involved"); // no code references on this draft
     expect(md).not.toMatch(/Story Points:\*\* \d/);
   });
 

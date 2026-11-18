@@ -26,7 +26,14 @@ Fill these fields:
   (e.g. a pure code change usually needs 7, 8, 11; changed behaviour also needs 5 and 10; new third-party dependencies need 12.)
 - `deliverables`: the concrete, configuration-managed outputs when the ticket is closed (list).
 
-Use ONLY information from the meeting and the code. Leave a list empty (or `objective` empty) when the meeting gave no basis for it — the team completes it during refinement. Do not invent requirements, numbers, names or dates.
+Fill EVERY field from the discussion, including small details (constraints, edge cases, people or teams mentioned, tools, formats, timing):
+- Prefer what was said explicitly. Where the meeting implies something without saying it, still write the most likely item and end it with " (to confirm)", so the team sees it was inferred.
+- `outOfScope`: what the meeting excluded, postponed or kept for later, plus clear boundaries of this action (e.g. "Changing X" when only Y was agreed).
+- `dependencies`: people, teams, tickets, decisions, access or tools this work waits for.
+- `acceptanceCriteria`: at least two binary, testable statements.
+- `deliverables`: the concrete outputs (code change, document, test report, configuration, decision record…).
+- Leave a list empty only if the meeting gives no basis at all for it.
+- Never invent names, numbers, dates or technical facts that were not discussed.
 
 Return:
 ```json

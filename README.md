@@ -178,9 +178,14 @@ Each draft:
 
 - **Sections:** Objective, In Scope, Out of Scope, Dependencies, Acceptance Criteria, Definition of Done
   (the agent proposes which criteria apply; the team tailors them during refinement), and Deliverable.
-- **Source & Context:** the meeting, verbatim quotes, and **links to the related code**. The links point to
-  the exact commit and line ranges.
-- **Never invented:** a section the meeting didn't cover says *"To be defined during refinement"*.
+- **Only the team's standard sections.** The meeting context (quotes, which meeting) is shown under
+  **Objective** as "From the meeting". The related code is listed under **In Scope** as "Code involved", with
+  links to the exact commit and lines. The parent Stakeholder Requirement is listed under **Dependencies**,
+  because it must be linked before the ticket is Ready.
+- **Filled from the discussion,** including small details. Items the meeting only implied are marked
+  "(to confirm)", so the team can check them during refinement.
+- **No made-up facts:** names, numbers and dates come only from the meeting. A section the meeting gives no basis
+  for at all says *"To be defined during refinement"*.
   Story Points are never estimated and Sub-Tasks are never created.
 - **Signed:** a visible footer, `Drafted by Atef's Minion` with the green mascot next to it (set `signatureImage` to `null` in the config for text only), plus a hidden
   `<!-- atefs-minion:v1 {...} -->` block used for duplicate detection.

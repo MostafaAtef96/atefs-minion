@@ -33,20 +33,13 @@ function quoteLine(q: { text: string; speaker?: string | null; timestamp?: strin
 
 function renderDod(selected: number[]): string {
   const sel = new Set(selected);
-  const proposed = DOD_CRITERIA.map((name, i) => ({ n: i + 1, name })).filter((c) => sel.has(c.n));
-  const others = DOD_CRITERIA.map((name, i) => ({ n: i + 1, name })).filter((c) => !sel.has(c.n));
-  const lines = ["_Proposed by the agent; tailor during refinement (DoR)._", ""];
+  const proposed = DOD_CRITERIA.filter((_, i) => sel.has(i + 1));
+  const others = DOD_CRITERIA.filter((_, i) => !sel.has(i + 1));
+  const lines: string[] = [];
   if (proposed.length === 0) lines.push(TBD);
-  else lines.push(...proposed.map((c) => `- [ ] ${c.n}. ${c.name}`));
+  else lines.push(...proposed.map((name) => `- [ ] ${name}`));
   if (others.length > 0) {
-    lines.push(
-      "",
-      "<details><summary>Criteria not proposed for this ticket</summary>",
-      "",
-      ...others.map((c) => `- ${c.n}. ${c.name}`),
-      "",
-      "</details>",
-    );
+    lines.push("", "<details><summary>Other criteria (not proposed for this ticket)</summary>", "", ...others.map((name) => `- ${name}`), "", "</details>");
   }
   return lines.join("\n");
 }
@@ -72,44 +65,40 @@ export function renderIssueBody(draft: Draft): string {
   const extra: string[] = [];
   if (draft.owner) extra.push(`**Owner (from meeting):** ${draft.owner}`);
   if (draft.due) extra.push(`**Due (from meeting):** ${draft.due}`);
+  const flags = draft.flags.map((f) => `> **Note:** ${f}`);
 
-  const sources = draft.sources
-    .map((s) => [`**Raised in:** ${s.meetingTitle}`, ...s.quotes.map(quoteLine)].join("\n"))
-    .join("\n\n");
-
-  let code: string;
-  if (draft.refs.length === 0) {
-    code = "**Related code:** _none identified_";
-  } else {
+  // Meeting context belongs to the Objective (the "why"), code to In Scope (what is changed).
+  const fromMeeting = draft.sources.flatMap((s) => [`**From the meeting:** ${s.meetingTitle}`, ...s.quotes.map(quoteLine), ""]);
+  const code: string[] = [];
+  if (draft.refs.length) {
     const sha = draft.commitSha ? ` (commit \`${draft.commitSha.slice(0, 7)}\`)` : "";
-    code = [
-      `**Related code**${sha}:`,
-      ...draft.refs.map((r) => {
-        const range = r.startLine === r.endLine ? `L${r.startLine}` : `L${r.startLine}-L${r.endLine}`;
-        const sym = r.symbol ? ` — \`${r.symbol}\`` : "";
-        return `- [\`${r.path}#${range}\`](${r.permalink})${sym}: ${r.why}`;
-      }),
-    ].join("\n");
+    code.push("", `**Code involved**${sha}:`, ...draft.refs.map((r) => {
+      const range = r.startLine === r.endLine ? `L${r.startLine}` : `L${r.startLine}-L${r.endLine}`;
+      const sym = r.symbol ? ` — \`${r.symbol}\`` : "";
+      return `- [\`${r.path}#${range}\`](${r.permalink})${sym}: ${r.why}`;
+    }));
   }
-
-  const flags = draft.flags.length ? `\n\n${draft.flags.map((f) => `> **Note:** ${f}`).join("\n")}` : "";
+  // The parent Stakeholder Requirement link is part of the Definition of Ready, so it is listed as a dependency.
+  const dependencies = [...c.dependencies, "Parent Stakeholder Requirement: _to be linked before the ticket is Ready_"];
   const meetingNames = [...new Set(draft.sources.map((s) => `*${s.meetingTitle}*`))].join(", ");
 
   return [
     header,
     ...(extra.length ? ["", extra.join(" · ")] : []),
+    ...(flags.length ? ["", ...flags] : []),
     "",
     "## Objective",
     c.objective.trim() || TBD,
     "",
+    ...fromMeeting,
     "## In Scope",
-    list(c.inScope),
+    c.inScope.length || code.length ? [...c.inScope.map((i) => `- ${i}`), ...code].join("\n").replace(/^\n/, "") : TBD,
     "",
     "## Out of Scope",
     list(c.outOfScope),
     "",
     "## Dependencies",
-    list(c.dependencies),
+    list(dependencies),
     "",
     "## Acceptance Criteria",
     list(c.acceptanceCriteria, true),
@@ -119,14 +108,6 @@ export function renderIssueBody(draft: Draft): string {
     "",
     "## Deliverable",
     list(c.deliverables),
-    "",
-    "---",
-    "## Source & Context",
-    "**Upstream traceability:** Stakeholder Requirement: _TBD (link before DoR)_",
-    "",
-    sources,
-    "",
-    code + flags,
     "",
     "---",
     signature(meetingNames),
