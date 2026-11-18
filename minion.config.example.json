@@ -1,0 +1,11 @@
+{
+  "geminiCommand": "gemini",
+  "geminiArgs": ["--acp"],
+  "model": null,
+  "defaultRepo": "owner/name",
+  "outDir": "out",
+  "maxRetries": 2,
+  "logPrompts": true,
+  "promptTimeoutSec": 600,
+  "webPort": 4711
+}
