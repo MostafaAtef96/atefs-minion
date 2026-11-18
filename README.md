@@ -4,11 +4,41 @@
 
 Atef's Minion turns the notes and transcript that **Gemini in Google Meet** writes for a meeting into
 **reviewed ticket drafts** written in the team's *Standardized Ticket Format*.
-Each draft includes links to the related source code.
+Each draft can include links to the related source code; meetings that aren't about code work too.
 
 It does not call an LLM API itself. It drives your own **Gemini CLI** over the
 [Agent Client Protocol (ACP)](https://agentclientprotocol.com), so it needs no API key: it uses whatever
 login Gemini CLI already has.
+
+## Quick start (Windows)
+
+**Once**, after downloading the ZIP and unzipping it: make sure you're logged in to Gemini CLI (run `gemini`
+once), then double-click **`setup.cmd`** in the minion folder.
+
+**For every meeting**, export the "Notes by Gemini" document (*File → Download → Markdown*), open a Command
+Prompt in the minion folder and run:
+
+```bash
+minion run --notes "C:\Downloads\Sprint Review - Notes by Gemini.md" --repo my-org/my-repo
+```
+
+- **The meeting title** is taken from the file name.
+- **Code links:** to have the tickets point to the code, add `--src C:\work\my-repo` (your local copy of the
+  repository). Leave it out when the meeting isn't about code.
+- **Several meetings of the same project:** list the files and add `--each`. Each file is processed as its own
+  meeting, one after another, and you get a combined recap at the end:
+
+  ```bash
+  minion run --each --notes "Planning.md" "Review.md" "Sync.md" --repo my-org/my-repo
+  ```
+
+- **Review:** the terminal shows each draft. Press `a` to approve, `e` to edit (Notepad), `t` to switch
+  Task/User Story, or `r` to reject. Use `m` to merge something that's already ticketed.
+- **Result:** open `out\<meeting>\index.html` for the meeting recap and an *Open as GitHub issue* button per
+  ticket.
+- **Prefer a browser?** Run `minion web` and open http://127.0.0.1:4711.
+
+In PowerShell, type `.\minion` instead of `minion`. The rest of this README has the details.
 
 > **Phase 1 (MVP1)** produces drafts only. Nothing is created on GitHub.
 > Creating issues, fetching the repo automatically and updating the calendar event come in MVP2.

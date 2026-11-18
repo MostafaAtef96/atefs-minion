@@ -85,7 +85,7 @@
         <input id="repo" type="text" placeholder="owner/name">
       </div>
     </div>
-    <label for="src">Local code folder <span class="hint">path on this computer</span></label>
+    <label for="src">Local code folder <span class="hint">optional · leave empty if the meeting isn't about code</span></label>
     <input id="src" type="text" placeholder="C:\work\my-repo">
     <div class="actions">
       <button id="start">Generate drafts</button>
@@ -151,6 +151,18 @@ async function loadPending() {
   box.append(ul);
 }
 
+// Same rule as the command line: "Sprint Review_ X – 2026_11_17 – Notizen von Gemini.md" -> "Sprint Review: X – 2026_11_17"
+function titleFromFile(name) {
+  const base = name.replace(/\.[^.]+$/, "");
+  return base.replace(/\s*[–—-]\s*(Notizen von Gemini|Notes by Gemini|Notas de Gemini|Notes de Gemini|Gemini notes|Transkript|Transcript)\s*$/i, "")
+    .replace(/_ /g, ": ").replace(/\s+/g, " ").trim() || base;
+}
+
+$("notes").addEventListener("change", () => {
+  const f = $("notes").files[0];
+  if (f && !$("meeting").value.trim()) $("meeting").value = titleFromFile(f.name);
+});
+
 $("start").addEventListener("click", async () => {
   const files = [...$("notes").files];
   const progress = $("progress");
@@ -161,7 +173,7 @@ $("start").addEventListener("click", async () => {
     $("start").disabled = true;
     progress.textContent = "Starting…\n";
     const { jobId } = await api("/api/runs", {
-      notes, src: $("src").value.trim(), meeting: $("meeting").value.trim(), repo: $("repo").value.trim(), force: $("force").checked,
+      notes, src: $("src").value.trim(), meeting: $("meeting").value.trim() || titleFromFile(files[0].name), repo: $("repo").value.trim(), force: $("force").checked,
     });
     for (;;) {
       await new Promise((r) => setTimeout(r, 1000));

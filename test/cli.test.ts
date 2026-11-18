@@ -53,4 +53,22 @@ describe("minion CLI (built) with a fake Gemini CLI over stdio", () => {
     await expect(minion("run", "--notes", "missing.docx", "--meeting", "x", "--src", repo)).rejects.toMatchObject({ stderr: expect.stringContaining("Download as Markdown") });
     expect(await readdir(path.join(dir, "state"))).toEqual(["pending"]);
   }, 60_000);
+
+  it("run --each: one meeting per file, titles from file names, without code", async () => {
+    const dir = await tempDir();
+    await writeFile(path.join(dir, "minion.config.json"), JSON.stringify({
+      geminiCommand: process.execPath, geminiArgs: [FAKE, "--acp"], stateDir: "state", outDir: "out", defaultRepo: "tj/commander.js",
+    }));
+    const a = path.join(dir, "Sprint Review_ VTP – 2026_11_17 – Notizen von Gemini.md");
+    const b = path.join(dir, "Team sync - Notes by Gemini.md");
+    await writeFile(a, await readFile(path.join(ROOT, "samples", "04-team-sync-2026-11-20.md"), "utf8"));
+    await writeFile(b, (await readFile(path.join(ROOT, "samples", "04-team-sync-2026-11-20.md"), "utf8")) + "\nExtra line.\n");
+    const r = await run(process.execPath, [CLI, "run", "--each", "--no-review", "--notes", a, b], { cwd: dir, env: { ...process.env, FAKE_SCENARIO: "1" } });
+    expect(r.stdout).toContain("=== Meeting 1/2: Sprint Review: VTP – 2026_11_17 ===");
+    expect(r.stdout).toContain("=== Meeting 2/2: Team sync ===");
+    expect(r.stderr).toContain("No local code folder: tickets are drafted without code links.");
+    expect(r.stderr).not.toContain("searching related code");
+    const pending = (await readdir(path.join(dir, "state", "pending"))).filter((f) => f.endsWith(".json")).sort();
+    expect(pending).toEqual(["sprint-review-vtp-2026-11-17.json", "team-sync.json"]);
+  }, 60_000);
 });
