@@ -10,7 +10,7 @@ import { loadConfig } from "../src/core/config.js";
 import { mergeDrafts } from "../src/core/finalize.js";
 import { MAX_ISSUE_URL, newIssueLink, renderIndexPage } from "../src/core/export.js";
 import { originMatchesRepo, listTrackedFiles, readGitInfo } from "../src/core/git.js";
-import { validateInputs } from "../src/core/inputs.js";
+import { meetingTitleFromFile, validateInputs } from "../src/core/inputs.js";
 import { permalink, verifyRefs } from "../src/core/refs.js";
 import { AGENT_NAME, DEFAULT_SIGNATURE_IMAGE, parseEditable, renderDraftFile, renderEditable, setSignatureImage } from "../src/core/render.js";
 import type { Draft, TicketContent } from "../src/core/schemas.js";
@@ -310,5 +310,24 @@ describe("meeting recap", () => {
     expect(isIssueUrl("https://github-ri.example.com/org/repo/issues/3/")).toBe(true);
     expect(isIssueUrl("https://github.com/tj/commander.js/pull/12")).toBe(false);
     expect(isIssueUrl("not a url")).toBe(false);
+  });
+});
+
+describe("meeting title from the exported file name", () => {
+  it.each([
+    ["Sprint Review_ ValidationGrid (VTP) – 2026_11_17 11_29 CET – Notizen von Gemini.md", "Sprint Review: ValidationGrid (VTP) – 2026_11_17 11_29 CET"],
+    ["C:\\Users\\me\\Downloads\\Planning - Notes by Gemini.txt", "Planning"],
+    ["weekly-sync.md", "weekly-sync"],
+  ])("%s", (file, title) => {
+    expect(meetingTitleFromFile(file.replace(/\\/g, "/"))).toBe(title);
+  });
+});
+
+describe("inputs without code", () => {
+  it("accepts a missing code folder", async () => {
+    const v = await validateInputs({ notes: [{ name: "n.md", content: "x" }], srcPath: null, meetingTitle: "T", repo: "o/r" });
+    expect(v.srcPath).toBeNull();
+    const w = await validateInputs({ notes: [{ name: "n.md", content: "x" }], srcPath: "  ", meetingTitle: "T", repo: "o/r" });
+    expect(w.srcPath).toBeNull();
   });
 });

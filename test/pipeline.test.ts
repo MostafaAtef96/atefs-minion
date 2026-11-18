@@ -257,3 +257,24 @@ describe("meeting recap and issue links", () => {
     await expect(readRecap(store, "nope")).rejects.toThrow(/No meeting/);
   });
 });
+
+describe("meetings that are not about code", () => {
+  it("drafts tickets without searching code or reading the repository", async () => {
+    const responder = scenario();
+    const agents = new FakeAgentFactory(responder);
+    const run = await generate(
+      { notes: await sample("01-planning-2026-11-03.md"), srcPath: null, meetingTitle: "Planning 2026-11-03", repo: "tj/commander.js" },
+      { agents, store, config },
+    );
+    expect(run.drafts).toHaveLength(3);
+    expect(run.drafts.every((d) => d.draft.refs.length === 0 && d.draft.commitSha === null)).toBe(true);
+    expect(responder.calls["P2"]).toBe(0);
+    expect(run.srcPath).toBeNull();
+    expect(agents.opened[0]).not.toBe(repo);
+    expect(existsSync(agents.opened[0]!)).toBe(false); // the empty working folder is removed afterwards
+    expect(agents.prompts[0]).toContain("This meeting is not about code");
+    expect(run.warnings).toEqual([]);
+    const r = await finalize(run, approveAll(run), { store, config });
+    expect(await readFile(r.written[0]!.file, "utf8")).toContain("**Related code:** _none identified_");
+  });
+});

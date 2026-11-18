@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { loadConfig, type MinionConfig } from "../core/config.js";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { finalize, linkIssue, readRecap, removeDraft, type FinalizeResult } from "../core/finalize.js";
 import { setSignatureImage } from "../core/render.js";
-import { InputError, readNotesFiles } from "../core/inputs.js";
-import { generate } from "../core/pipeline.js";
+import { InputError, meetingTitleFromFile, readNotesFiles } from "../core/inputs.js";
+import { generate, MeetingAlreadyProcessedError } from "../core/pipeline.js";
 import { Store } from "../core/store.js";
 import { GeminiAgentFactory } from "../control/acp.js";
 import { startWebServer } from "../web/server.js";
@@ -50,34 +52,65 @@ function printResult(r: FinalizeResult): void {
 
 program
   .command("run")
-  .description("extract actions from meeting notes, draft tickets, and review them")
-  .requiredOption("-n, --notes <files...>", "Gemini notes and/or transcript (.md or .txt)")
-  .requiredOption("-m, --meeting <title>", 'meeting title, e.g. "Sprint Review 2026-11-05"')
-  .option("-s, --src <path>", "local git clone of the target repository", ".")
+  .description("draft tickets from meeting notes and review them (several meetings: add --each)")
+  .requiredOption("-n, --notes <files...>", "exported Gemini notes (.md or .txt); with --each, one file per meeting")
+  .option("-m, --meeting <title>", "meeting title (default: taken from the file name)")
   .option("-r, --repo <owner/name>", "GitHub repository the tickets are for")
-  .option("-f, --force", "process again even if this meeting was already processed")
+  .option("-s, --src <path>", "local copy (git clone) of that repository, for code links; leave out if the meeting is not about code")
+  .option("--no-code", "do not look at any code, even if --src or a default is set")
+  .option("--each", "every --notes file is a separate meeting of the same project (processed one after another)")
+  .option("-f, --force", "process again even if a meeting was already processed")
   .option("--no-review", "generate drafts only; review later with `minion review`")
-  .action(async (opts: { notes: string[]; meeting: string; src: string; repo?: string; force?: boolean; review: boolean }) => {
+  .action(async (opts: {
+    notes: string[]; meeting?: string; src?: string; code: boolean; each?: boolean; repo?: string; force?: boolean; review: boolean;
+  }) => {
     const cfg = config();
     const store = new Store(cfg.stateDir);
     const repo = opts.repo ?? cfg.defaultRepo;
     if (!repo) throw new InputError(['--repo is required (or set "defaultRepo" in minion.config.json).']);
+    const srcPath = opts.code ? (opts.src ?? null) : null;
     const progress = (m: string) => process.stderr.write(`• ${m}\n`);
-    const run = await generate(
-      { notes: await readNotesFiles(opts.notes), srcPath: opts.src, meetingTitle: opts.meeting, repo, force: opts.force },
-      { agents: geminiFactory(cfg, (a) => process.stderr.write(`    ↳ ${a}\n`)), store, config: cfg, onProgress: progress },
-    );
-    if (!opts.review || run.drafts.length === 0) {
-      if (run.drafts.length === 0) {
-        console.log("No decided action items found.");
-        printResult(await finalize(run, {}, { store, config: cfg }));
-      } else {
-        console.log(`Drafts are waiting for review: minion review ${run.meetingId}`);
+    const agents = geminiFactory(cfg, (a) => process.stderr.write(`    ↳ ${a}\n`));
+
+    // One meeting per file (--each), or all files together as one meeting (notes + transcript).
+    const groups = opts.each ? opts.notes.map((f) => [f]) : [opts.notes];
+    if (opts.each && opts.meeting) console.log("Note: --meeting is ignored with --each; titles come from the file names.");
+    const recaps: { title: string; file: string }[] = [];
+
+    for (const [i, files] of groups.entries()) {
+      const meetingTitle = (!opts.each && opts.meeting) || meetingTitleFromFile(files[0]!);
+      if (groups.length > 1) console.log(`\n=== Meeting ${i + 1}/${groups.length}: ${meetingTitle} ===`);
+      let run;
+      try {
+        run = await generate(
+          { notes: await readNotesFiles(files), srcPath, meetingTitle, repo, force: opts.force },
+          { agents, store, config: cfg, onProgress: progress },
+        );
+      } catch (e) {
+        if (groups.length > 1 && e instanceof MeetingAlreadyProcessedError) {
+          console.log(`Skipped: ${(e as Error).message}`);
+          continue;
+        }
+        throw e;
       }
-      return;
+      if (!opts.review && run.drafts.length > 0) {
+        console.log(`Drafts are waiting for review: minion review ${run.meetingId}`);
+        continue;
+      }
+      if (run.drafts.length === 0) console.log("No decided action items found.");
+      const decisions = run.drafts.length ? await reviewInTerminal(run, await store.loadLedger()) : {};
+      const result = await finalize(run, decisions, { store, config: cfg });
+      printResult(result);
+      if (result.recap) recaps.push({ title: run.meetingTitle, file: result.recap });
     }
-    const decisions = await reviewInTerminal(run, await store.loadLedger());
-    printResult(await finalize(run, decisions, { store, config: cfg }));
+
+    if (recaps.length > 1) {
+      const combined = path.join(cfg.outDir, `combined-recap-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.md`);
+      const parts = await Promise.all(recaps.map((r) => readFile(r.file, "utf8")));
+      await mkdir(cfg.outDir, { recursive: true });
+      await writeFile(combined, parts.map((p) => p.trim()).join("\n\n----------------------------------------\n\n") + "\n", "utf8");
+      console.log(`\nCombined recap of all ${recaps.length} meetings: ${combined}`);
+    }
   });
 
 program

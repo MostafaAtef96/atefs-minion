@@ -138,7 +138,7 @@ export const PendingRun = z.object({
   meetingId: z.string(),
   meetingTitle: z.string(),
   repo: z.string(),
-  srcPath: z.string(),
+  srcPath: z.string().nullable(),
   commitSha: z.string().nullable(),
   inputHash: z.string(),
   createdAt: z.string(),

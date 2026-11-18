@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
-import { appendFile, mkdir, rm } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
 import { askJson, StructuredOutputError } from "../control/json.js";
@@ -81,8 +82,13 @@ export async function generate(rawInputs: RunInputs, deps: PipelineDeps): Promis
     }
   }
 
-  const git = await readGitInfo(srcPath);
-  if (!git.isRepo) {
+  const codeMode = srcPath !== null;
+  const git = codeMode
+    ? await readGitInfo(srcPath)
+    : { isRepo: false, headSha: null, dirty: false, onRemote: false, originUrl: null };
+  if (!codeMode) {
+    progress("No local code folder: tickets are drafted without code links.");
+  } else if (!git.isRepo) {
     warnings.push("Source path is not a git repository: code references are disabled (no permalinks possible).");
   } else {
     if (git.dirty) warnings.push("Source repository has uncommitted changes: line references may not match the commit.");
@@ -91,7 +97,7 @@ export async function generate(rawInputs: RunInputs, deps: PipelineDeps): Promis
       warnings.push(`The clone's origin (${git.originUrl}) does not match ${repo}: permalinks point to ${repo}.`);
     }
   }
-  const tracked = git.isRepo ? await listTrackedFiles(srcPath) : new Set<string>();
+  const tracked = codeMode && git.isRepo ? await listTrackedFiles(srcPath) : new Set<string>();
   const sha = git.headSha;
 
   // Prompt log (moved into out/<meeting>/run.log on approval).
@@ -109,7 +115,9 @@ export async function generate(rawInputs: RunInputs, deps: PipelineDeps): Promis
   // ---- Step 1: init -------------------------------------------------------------------
   progress("Starting the AI agent…");
   const startedAt = Date.now();
-  const session = await deps.agents.open(srcPath, { onEvent: (text) => log("event", text) });
+  // Without code, the agent works in an empty folder so it has nothing to read.
+  const agentDir = srcPath ?? (await mkdtemp(path.join(os.tmpdir(), "minion-nocode-")));
+  const session = await deps.agents.open(agentDir, { onEvent: (text) => log("event", text) });
   // Every turn (including retries after invalid JSON) is logged with its task label.
   const ask = <S extends z.ZodType>(prompt: string, schema: S, label: string) =>
     askJson(loggingSession(session, label, log), prompt, schema, config.maxRetries);
@@ -117,7 +125,10 @@ export async function generate(rawInputs: RunInputs, deps: PipelineDeps): Promis
   const drafts: PendingDraft[] = [];
   const skipped: SkippedAction[] = [];
   try {
-    await loggingSession(session, "system", log).prompt(renderPrompt("system", { repo }));
+    const workspace = codeMode
+      ? `- Your working directory is a local clone of the GitHub repository \`${repo}\`. You may READ and SEARCH files in it to find related code.`
+      : `- This meeting is not about code: there is no source code to look at. Do not read or search any files. Tickets are for the GitHub repository \`${repo}\`.`;
+    await loggingSession(session, "system", log).prompt(renderPrompt("system", { repo, workspace }));
 
     // ---- Step 2: extract ------------------------------------------------------------------
     progress("Extracting action items…");
@@ -147,7 +158,7 @@ export async function generate(rawInputs: RunInputs, deps: PipelineDeps): Promis
       // ---- Steps 3–4: code context + verification ----------------------------------------
       let refs: VerifiedRef[] = [];
       const flags: string[] = [];
-      if (git.isRepo) {
+      if (codeMode && git.isRepo) {
         progress(`${label}: searching related code…`);
         try {
           const p2 = await ask(renderPrompt("p2-code", { title: action.title, summary: action.summary }), P2Output, "P2");
@@ -213,6 +224,7 @@ export async function generate(rawInputs: RunInputs, deps: PipelineDeps): Promis
     }
   } finally {
     await session.close().catch(() => {});
+    if (!srcPath) await rm(agentDir, { recursive: true, force: true }).catch(() => {});
     log("summary", `Finished in ${formatDuration(Date.now() - startedAt)}: ${drafts.length} draft(s), ${skipped.length} not drafted.`);
     await logChain;
   }

@@ -19,7 +19,7 @@ const MAX_BODY = 6 * 1024 * 1024;
 
 const RunRequest = z.object({
   notes: z.array(z.object({ name: z.string(), content: z.string() })).min(1),
-  src: z.string().min(1),
+  src: z.string().optional(),
   meeting: z.string().min(1),
   repo: z.string().min(1),
   force: z.boolean().optional(),
@@ -126,7 +126,7 @@ export async function startWebServer(opts: WebServerOptions): Promise<{ url: str
       jobs.set(job.id, job);
       const note = (m: string) => job.progress.push(m);
       generate(
-        { notes: body.notes, srcPath: body.src, meetingTitle: body.meeting, repo: body.repo, force: body.force },
+        { notes: body.notes, srcPath: body.src?.trim() || null, meetingTitle: body.meeting, repo: body.repo, force: body.force },
         { agents: opts.agents((a) => note(`  ↳ ${a}`)), store, config, onProgress: note },
       ).then(
         (run) => Object.assign(job, { status: "done", meetingId: run.meetingId }),
