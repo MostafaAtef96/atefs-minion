@@ -53,3 +53,45 @@ export function normalizeItem(item: string): string {
 }
 
 export const REPO_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+
+const NAME = /^[A-Za-z0-9_.-]+$/;
+const HOST = /^[A-Za-z0-9.-]+\.[A-Za-z0-9.-]+(:\d+)?$/;
+
+/**
+ * Canonical repository id. github.com repositories stay "owner/name"; repositories on other GitHub servers
+ * (GitHub Enterprise) become "host/owner/name". Accepts "owner/name", "host/owner/name", a web URL
+ * ("https://host/owner/name", optionally with ".git" or more path) or an SSH remote ("git@host:owner/name.git").
+ * Returns null when the input is not a repository.
+ */
+export function normalizeRepo(input: string): string | null {
+  let s = input.trim().replace(/\.git$/, "").replace(/\/+$/, "");
+  let host = "github.com";
+  let parts: string[];
+  const ssh = /^[\w.-]+@([^:/]+):(.+)$/.exec(s);
+  if (ssh) {
+    host = ssh[1]!;
+    parts = ssh[2]!.split("/");
+  } else if (/^https?:\/\//i.test(s)) {
+    let url: URL;
+    try {
+      url = new URL(s);
+    } catch {
+      return null;
+    }
+    host = url.host;
+    parts = url.pathname.split("/").filter(Boolean);
+  } else {
+    parts = s.split("/").filter(Boolean);
+    if (parts.length === 3 && HOST.test(parts[0]!)) host = parts.shift()!;
+    else if (parts.length !== 2) return null;
+  }
+  const [owner, name] = parts.map((p) => p.replace(/\.git$/, ""));
+  if (!owner || !name || !NAME.test(owner) || !NAME.test(name) || !HOST.test(host)) return null;
+  host = host.toLowerCase().replace(/^www\./, "");
+  return host === "github.com" ? `${owner}/${name}` : `${host}/${owner}/${name}`;
+}
+
+/** Web address of a canonical repository id, e.g. "https://github.com/owner/name". */
+export function repoWebUrl(repo: string): string {
+  return repo.split("/").length === 3 ? `https://${repo}` : `https://github.com/${repo}`;
+}

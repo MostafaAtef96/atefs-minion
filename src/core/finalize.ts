@@ -257,7 +257,7 @@ export async function readRecap(store: Store, meetingId: string): Promise<string
  * every meeting are regenerated, so the recap shows the ticket link.
  */
 export async function linkIssue(store: Store, draftId: string, url: string): Promise<{ title: string; meetings: string[] }> {
-  if (!isIssueUrl(url)) throw new Error(`Not a GitHub issue URL: ${url} (expected https://github.com/owner/repo/issues/123)`);
+  if (!isIssueUrl(url)) throw new Error(`Not a GitHub issue URL: ${url} (expected something like https://github.com/owner/repo/issues/123)`);
   const ledger = await store.loadLedger();
   const draft = ledger.drafts[draftId];
   if (!draft) throw new Error(`No draft with id "${draftId}". See "minion ledger list".`);

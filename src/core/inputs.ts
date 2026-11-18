@@ -1,6 +1,6 @@
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { REPO_PATTERN, sha256, slugify } from "./text.js";
+import { normalizeRepo, sha256, slugify } from "./text.js";
 
 export interface NotesFile {
   name: string;
@@ -52,8 +52,8 @@ export async function validateInputs(inputs: RunInputs): Promise<ValidatedInputs
   if (total > MAX_NOTES_BYTES) errors.push("Notes/transcript content is larger than 2 MB.");
   const title = inputs.meetingTitle.trim();
   if (!title) errors.push("Meeting title is required.");
-  const repo = inputs.repo.trim().replace(/^https?:\/\/github\.com\//i, "").replace(/\.git$/, "").replace(/\/$/, "");
-  if (!REPO_PATTERN.test(repo)) errors.push(`GitHub repo must look like "owner/name" (got "${inputs.repo}").`);
+  const repo = normalizeRepo(inputs.repo) ?? "";
+  if (!repo) errors.push(`GitHub repository must be "owner/name" or its web address (got "${inputs.repo}").`);
   const srcRaw = (inputs.srcPath ?? "").trim();
   const srcPath = srcRaw ? path.resolve(srcRaw) : null;
   if (srcPath) {

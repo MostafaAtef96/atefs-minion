@@ -14,7 +14,7 @@ import { meetingTitleFromFile, validateInputs } from "../src/core/inputs.js";
 import { permalink, verifyRefs } from "../src/core/refs.js";
 import { AGENT_NAME, DEFAULT_SIGNATURE_IMAGE, parseEditable, renderDraftFile, renderEditable, setSignatureImage } from "../src/core/render.js";
 import type { Draft, TicketContent } from "../src/core/schemas.js";
-import { fingerprint, normalizeTitle, slugify } from "../src/core/text.js";
+import { fingerprint, normalizeRepo, normalizeTitle, repoWebUrl, slugify } from "../src/core/text.js";
 import { makeRepo, tempDir } from "./helpers.js";
 
 const content: TicketContent = {
@@ -329,5 +329,39 @@ describe("inputs without code", () => {
     expect(v.srcPath).toBeNull();
     const w = await validateInputs({ notes: [{ name: "n.md", content: "x" }], srcPath: "  ", meetingTitle: "T", repo: "o/r" });
     expect(w.srcPath).toBeNull();
+  });
+});
+
+describe("repositories on github.com and on GitHub Enterprise servers", () => {
+  it.each([
+    ["tj/commander.js", "tj/commander.js"],
+    ["https://github.com/tj/commander.js", "tj/commander.js"],
+    ["https://www.github.com/tj/commander.js.git", "tj/commander.js"],
+    ["git@github.com:tj/commander.js.git", "tj/commander.js"],
+    ["https://ghe.example.com/TEAM/repo_aD_VG", "ghe.example.com/TEAM/repo_aD_VG"],
+    ["https://ghe.example.com/TEAM/repo_aD_VG/issues?q=1", "ghe.example.com/TEAM/repo_aD_VG"],
+    ["ghe.example.com/TEAM/repo_aD_VG", "ghe.example.com/TEAM/repo_aD_VG"],
+    ["git@ghe.example.com:TEAM/repo_aD_VG.git", "ghe.example.com/TEAM/repo_aD_VG"],
+  ])("%s", (input, expected) => {
+    expect(normalizeRepo(input)).toBe(expected);
+  });
+
+  it.each(["bad", "a/b/c", "https://ghe.example.com/only-owner", "not a/repo"])("rejects %s", (input) => {
+    expect(normalizeRepo(input)).toBeNull();
+  });
+
+  it("builds links on the repository's own server", () => {
+    expect(repoWebUrl("tj/commander.js")).toBe("https://github.com/tj/commander.js");
+    expect(repoWebUrl("ghe.example.com/TEAM/repo")).toBe("https://ghe.example.com/TEAM/repo");
+    expect(permalink("ghe.example.com/TEAM/repo", "abc", "src/a.ts", 1, 2)).toBe("https://ghe.example.com/TEAM/repo/blob/abc/src/a.ts#L1-L2");
+    const link = newIssueLink(draft({ repo: "ghe.example.com/TEAM/repo" }));
+    expect(link.url).toMatch(/^https:\/\/ghe\.example\.com\/TEAM\/repo\/issues\/new\?title=/);
+    expect(originMatchesRepo("git@ghe.example.com:TEAM/repo.git", "ghe.example.com/TEAM/repo")).toBe(true);
+    expect(originMatchesRepo("https://github.com/TEAM/repo", "ghe.example.com/TEAM/repo")).toBe(false);
+  });
+
+  it("accepts a pasted repository link as input", async () => {
+    const v = await validateInputs({ notes: [{ name: "n.md", content: "x" }], srcPath: null, meetingTitle: "T", repo: "https://ghe.example.com/TEAM/repo_aD_VG" });
+    expect(v.repo).toBe("ghe.example.com/TEAM/repo_aD_VG");
   });
 });
