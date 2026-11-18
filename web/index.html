@@ -61,6 +61,10 @@
   .saved .link-form button { padding: 6px 12px; }
   .recap { margin-top: 18px; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
   .recap .card-head button { padding: 6px 14px; }
+  input:disabled { opacity: .5; cursor: not-allowed; }
+  .multi { display: grid; gap: 6px; margin: 10px 0 2px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; }
+  .multi label, label.inline { display: flex; gap: 8px; align-items: baseline; font-weight: 400; margin: 6px 0 0; }
+  .queue { margin: 0 0 10px; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--code); border-radius: 4px; }
   label.pick { display: flex; gap: 8px; align-items: baseline; font-weight: 400; margin: 6px 0; }
   ul.plain { margin: 6px 0; padding-left: 18px; }
   .ok { color: var(--ok); } .bad { color: var(--bad); }
@@ -73,8 +77,12 @@
 <main>
   <section id="new-run">
     <h2>New meeting</h2>
-    <label for="notes">Gemini notes / transcript <span class="hint">(.md or .txt exported from Google Docs; one or two files)</span></label>
+    <label for="notes">Gemini notes <span class="hint">(.md or .txt exported from Google Docs; you can pick several files)</span></label>
     <input id="notes" type="file" accept=".md,.markdown,.txt,.vtt" multiple>
+    <div id="multi" class="multi" hidden>
+      <label><input type="radio" name="mode" value="each" checked> <span><b>Separate meetings</b> of the same project <span class="hint">(one file per meeting, reviewed one after another)</span></span></label>
+      <label><input type="radio" name="mode" value="one"> <span><b>One meeting</b> <span class="hint">(e.g. the notes and the transcript of the same meeting)</span></span></label>
+    </div>
     <div class="row">
       <div>
         <label for="meeting">Meeting title (ID)</label>
@@ -85,8 +93,9 @@
         <input id="repo" type="text" placeholder="owner/name">
       </div>
     </div>
-    <label for="src">Local code folder <span class="hint">optional · leave empty if the meeting isn't about code</span></label>
+    <label for="src">Local code folder <span class="hint">your local copy of the repository, for code links</span></label>
     <input id="src" type="text" placeholder="C:\work\my-repo">
+    <label class="inline"><input id="nocode" type="checkbox"> Not about code <span class="hint">(no code search, no code links)</span></label>
     <div class="actions">
       <button id="start">Generate drafts</button>
       <label class="hint" style="display:inline-flex;gap:6px;margin:0"><input id="force" type="checkbox"> process again even if already processed</label>
@@ -145,7 +154,7 @@ async function loadPending() {
   if (!list.length) { box.append(el("span", { class: "hint" }, "Nothing is waiting for review.")); return; }
   const ul = el("ul", { class: "plain" });
   for (const p of list) {
-    ul.append(el("li", {}, el("a", { href: "#", onclick: (e) => { e.preventDefault(); openReview(p.meetingId); } }, p.meetingTitle),
+    ul.append(el("li", {}, el("a", { href: "#", onclick: (e) => { e.preventDefault(); QUEUE = null; openReview(p.meetingId); } }, p.meetingTitle),
       ` — ${p.repo} · ${p.drafts} draft(s) · ${new Date(p.createdAt).toLocaleString()}`));
   }
   box.append(ul);
@@ -160,35 +169,130 @@ function titleFromFile(name) {
 
 $("notes").addEventListener("change", () => {
   const f = $("notes").files[0];
-  if (f && !$("meeting").value.trim()) $("meeting").value = titleFromFile(f.name);
+  if (f && $("notes").files.length === 1 && !$("meeting").value.trim()) $("meeting").value = titleFromFile(f.name);
 });
 
-$("start").addEventListener("click", async () => {
-  const files = [...$("notes").files];
+// ---- remembered fields (this browser only)
+const remember = {
+  load() { try { for (const id of ["repo", "src"]) { const v = localStorage.getItem(`minion.${id}`); if (v && !$(id).value) $(id).value = v; }
+    $("nocode").checked = localStorage.getItem("minion.nocode") === "1"; } catch {} },
+  save() { try { localStorage.setItem("minion.repo", $("repo").value.trim()); localStorage.setItem("minion.src", $("src").value.trim());
+    localStorage.setItem("minion.nocode", $("nocode").checked ? "1" : "0"); } catch {} },
+};
+
+function multiMode() {
+  return $("notes").files.length > 1 ? document.querySelector('input[name="mode"]:checked').value : "one";
+}
+function syncForm() {
+  const many = $("notes").files.length > 1;
+  $("multi").hidden = !many;
+  const each = multiMode() === "each";
+  $("meeting").disabled = each;
+  $("meeting").placeholder = each ? "taken from each file name" : "Sprint Review 2026-11-05";
+  $("src").disabled = $("nocode").checked;
+}
+$("nocode").addEventListener("change", syncForm);
+for (const r of document.querySelectorAll('input[name="mode"]')) r.addEventListener("change", syncForm);
+$("notes").addEventListener("change", syncForm);
+
+// ---- one meeting at a time; several meetings are processed one after another
+let QUEUE = null; // { items: [{ title, files }], index, saved: [meetingId], skipped: [title] }
+
+async function runMeeting(item) {
+  const progress = $("progress");
+  const n = QUEUE.items.length;
+  const head = n > 1 ? `Meeting ${QUEUE.index + 1} of ${n}: ${item.title}\n` : "";
+  progress.textContent = head + "Starting…";
+  const notes = await Promise.all(item.files.map(async (f) => ({ name: f.name, content: await f.text() })));
+  const { jobId } = await api("/api/runs", {
+    notes, src: $("nocode").checked ? "" : $("src").value.trim(), meeting: item.title, repo: $("repo").value.trim(), force: $("force").checked,
+  });
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 1000));
+    const job = await api(`/api/jobs/${jobId}`);
+    progress.textContent = head + job.progress.join("\n");
+    progress.scrollTop = progress.scrollHeight;
+    if (job.status === "error") throw new Error(job.error);
+    if (job.status === "done") { await loadPending(); await openReview(job.meetingId); return; }
+  }
+}
+
+async function nextMeeting() {
   const progress = $("progress");
   progress.hidden = false;
+  $("start").disabled = true;
   try {
-    if (!files.length) throw new Error("Choose at least one notes/transcript file.");
-    const notes = await Promise.all(files.map(async (f) => ({ name: f.name, content: await f.text() })));
-    $("start").disabled = true;
-    progress.textContent = "Starting…\n";
-    const { jobId } = await api("/api/runs", {
-      notes, src: $("src").value.trim(), meeting: $("meeting").value.trim() || titleFromFile(files[0].name), repo: $("repo").value.trim(), force: $("force").checked,
-    });
-    for (;;) {
-      await new Promise((r) => setTimeout(r, 1000));
-      const job = await api(`/api/jobs/${jobId}`);
-      progress.textContent = job.progress.join("\n");
-      progress.scrollTop = progress.scrollHeight;
-      if (job.status === "error") throw new Error(job.error);
-      if (job.status === "done") { await loadPending(); await openReview(job.meetingId); break; }
+    while (QUEUE.index < QUEUE.items.length) {
+      const item = QUEUE.items[QUEUE.index];
+      try {
+        await runMeeting(item);
+        return; // continues after "Save decisions"
+      } catch (e) {
+        if (QUEUE.items.length > 1 && /already processed/.test(e.message)) {
+          QUEUE.skipped.push(item.title);
+          progress.textContent += `\nSkipped: ${e.message}`;
+          QUEUE.index += 1;
+          continue;
+        }
+        throw e;
+      }
     }
+    await showCombinedRecap();
   } catch (e) {
     progress.textContent += `\nError: ${e.message}`;
   } finally {
     $("start").disabled = false;
   }
+}
+
+$("start").addEventListener("click", async () => {
+  const files = [...$("notes").files];
+  const progress = $("progress");
+  progress.hidden = false;
+  if (!files.length) { progress.textContent = "Error: Choose at least one notes file."; return; }
+  if (!$("repo").value.trim()) { progress.textContent = "Error: Enter the GitHub ticket repository (owner/name)."; return; }
+  remember.save();
+  const items = multiMode() === "each"
+    ? files.map((f) => ({ title: titleFromFile(f.name), files: [f] }))
+    : [{ title: $("meeting").value.trim() || titleFromFile(files[0].name), files }];
+  QUEUE = { items, index: 0, saved: [], skipped: [] };
+  await nextMeeting();
 });
+
+/** Called after a meeting's decisions are saved: offer the next meeting, or the combined recap at the end. */
+function afterSave(result) {
+  if (!QUEUE) return null;
+  if (result.recap) QUEUE.saved.push({ id: CURRENT.run.meetingId, title: CURRENT.run.meetingTitle });
+  QUEUE.index += 1;
+  if (QUEUE.index < QUEUE.items.length) {
+    const next = QUEUE.items[QUEUE.index];
+    return el("div", { class: "actions" },
+      el("button", { type: "button", onclick: () => { $("new-run").scrollIntoView({ behavior: "smooth" }); nextMeeting(); } },
+        `Continue with meeting ${QUEUE.index + 1} of ${QUEUE.items.length}: ${next.title}`),
+      el("span", { class: "hint" }, "Copy this meeting's recap or add issue links first if you like."));
+  }
+  if (QUEUE.items.length > 1) {
+    return el("div", { class: "actions" }, el("button", { type: "button", onclick: showCombinedRecap }, "Show the combined recap of all meetings"));
+  }
+  return null;
+}
+
+async function showCombinedRecap() {
+  const parts = [];
+  for (const m of QUEUE.saved) {
+    try { const r = (await api(`/api/recap/${encodeURIComponent(m.id)}`)).markdown; if (r) parts.push(r.trim()); } catch {}
+  }
+  const text = parts.join("\n\n----------------------------------------\n\n");
+  const pre = el("pre", {}, text || "No recap: nothing was approved or merged.");
+  const copy = el("button", { type: "button", onclick: async () => { await navigator.clipboard.writeText(text).catch(() => {}); copy.textContent = "Copied"; } }, "Copy combined recap");
+  const box = el("div", { class: "recap", id: "combined-recap" },
+    el("div", { class: "card-head" }, el("h3", {}, `Combined recap · ${QUEUE.saved.length} meeting(s)`), copy),
+    QUEUE.skipped.length ? el("div", { class: "hint" }, `Skipped (already processed): ${QUEUE.skipped.join(", ")}`) : null,
+    pre);
+  $("review").hidden = false;
+  $("result").append(box);
+  box.scrollIntoView({ behavior: "smooth" });
+}
 
 const LISTS = [
   ["inScope", "In Scope"], ["outOfScope", "Out of Scope"], ["dependencies", "Dependencies"],
@@ -293,7 +397,8 @@ async function openReview(meetingId) {
   $("review").hidden = false;
   $("result").replaceChildren();
   $("finalize").disabled = false;
-  $("review-title").textContent = `Review: ${run.meetingTitle} → ${run.repo}`;
+  const pos = QUEUE && QUEUE.items.length > 1 ? `Meeting ${QUEUE.index + 1} of ${QUEUE.items.length} · ` : "";
+  $("review-title").textContent = `${pos}Review: ${run.meetingTitle} → ${run.repo}`;
   $("review-warnings").replaceChildren(...run.warnings.map((w) => el("div", { class: "notice" }, w)));
   $("review-skipped").replaceChildren(...(run.skipped.length ? [el("details", {}, el("summary", {}, `${run.skipped.length} item(s) not drafted (discussion only)`),
     el("ul", { class: "plain" }, run.skipped.map((s) => el("li", {}, s.title))))] : []));
@@ -369,6 +474,7 @@ $("finalize").addEventListener("click", async () => {
         "One Markdown file per ticket, manifest.json, and "), el("a", { href: `/out/${encodeURIComponent(CURRENT.run.meetingId)}`, target: "_blank", id: "index-link" }, "index.html"),
         el("span", { class: "hint" }, " with the same GitHub buttons, for later."))] : []),
       ...(r.recap ? [recapBox()] : []),
+      ...[afterSave(r)].filter(Boolean),
     );
     if (r.recap) await refreshRecap(CURRENT.run.meetingId);
     await loadPending();
@@ -381,6 +487,8 @@ $("finalize").addEventListener("click", async () => {
 (async () => {
   INFO = await api("/api/info");
   $("repo").value = INFO.defaultRepo || "";
+  remember.load();
+  syncForm();
   await loadPending();
 })().catch((e) => { $("pending").textContent = e.message; });
 </script>

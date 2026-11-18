@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { loadConfig, type MinionConfig } from "../core/config.js";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { spawn } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { finalize, linkIssue, readRecap, removeDraft, type FinalizeResult } from "../core/finalize.js";
 import { setSignatureImage } from "../core/render.js";
@@ -130,15 +131,38 @@ program
     printResult(await finalize(run, decisions, { store, config: cfg }));
   });
 
+/** Open a URL in the default browser (Windows, macOS, Linux). */
+function openBrowser(url: string): void {
+  const [cmd, args] =
+    process.platform === "win32" ? ["cmd", ["/c", "start", "", url]] :
+    process.platform === "darwin" ? ["open", [url]] : ["xdg-open", [url]];
+  try {
+    spawn(cmd, args, { detached: true, stdio: "ignore", windowsHide: true }).on("error", () => {}).unref();
+  } catch {
+    // no browser available: the URL is printed anyway
+  }
+}
+
 program
   .command("web")
   .description("open the local web form (input form + review table)")
   .option("-p, --port <port>", "port (default 4711)")
-  .action(async (opts: { port?: string }) => {
+  .option("--open", "also open it in the default browser")
+  .action(async (opts: { port?: string; open?: boolean }) => {
     const cfg = config();
     const port = opts.port ? Number(opts.port) : cfg.webPort;
-    const { url } = await startWebServer({ config: cfg, port, agents: (onActivity) => geminiFactory(cfg, onActivity) });
-    console.log(`Atef's Minion web form: ${url}  (Ctrl+C to stop)`);
+    try {
+      const { url } = await startWebServer({ config: cfg, port, agents: (onActivity) => geminiFactory(cfg, onActivity) });
+      console.log(`Atef's Minion web form: ${url}  (keep this window open; Ctrl+C to stop)`);
+      if (opts.open) openBrowser(url);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "EADDRINUSE") throw e;
+      const url = `http://127.0.0.1:${port}/`;
+      const running = await fetch(`${url}api/info`).then((r) => r.ok).catch(() => false);
+      if (!running) throw new Error(`Port ${port} is used by another program. Try: minion web --port 4800`);
+      console.log(`Atef's Minion is already running: ${url}`);
+      if (opts.open) openBrowser(url);
+    }
   });
 
 program

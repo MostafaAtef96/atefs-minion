@@ -1,10 +1,14 @@
 @echo off
-rem One-time setup after downloading Atef's Minion: installs the dependencies and builds it.
+rem Atef's Minion: double-click to install (first time only) and open the web page.
 cd /d "%~dp0"
-call npm ci || goto :failed
-call npm run build || goto :failed
+if not exist node_modules (
+  echo Installing Atef's Minion, this happens only once...
+  call npm ci || goto :failed
+)
+call npm run build --silent || goto :failed
 echo.
-echo Setup finished. Next, in this folder:  minion run --notes "your-notes.md" --repo owner/name
+echo Opening Atef's Minion in your browser. Keep this window open while you use it.
+node "%~dp0dist\cli\index.js" web --open
 pause
 exit /b 0
 :failed

@@ -12,33 +12,33 @@ login Gemini CLI already has.
 
 ## Quick start (Windows)
 
-**Once**, after downloading the ZIP and unzipping it: make sure you're logged in to Gemini CLI (run `gemini`
-once), then double-click **`setup.cmd`** in the minion folder.
+**Easiest: double-click `setup.cmd`** in the minion folder. The first time it installs everything; after that it
+just opens the minion in your browser. Keep the black window open while you use it. Before the first run, make
+sure you're logged in to Gemini CLI (run `gemini` once).
 
-**For every meeting**, export the "Notes by Gemini" document (*File → Download → Markdown*), open a Command
-Prompt in the minion folder and run:
+In the browser:
+
+1. **Choose the notes:** export the "Notes by Gemini" document (*File → Download → Markdown*) and pick the file.
+   You can pick **several files**; the form then asks whether they're separate meetings of the same project
+   (reviewed one after another, with a combined recap at the end) or one meeting (notes + transcript).
+2. **GitHub ticket repository:** `owner/name` (it's remembered for next time).
+3. **Code links:** fill in your local code folder, or tick **Not about code**.
+4. **Generate drafts,** review each ticket, then **Save decisions.** You get the meeting recap (with *Copy recap*) and
+   an *Open as GitHub issue* button per ticket.
+
+**Prefer the command line?** Open a Command Prompt in the minion folder (in PowerShell, type `.\minion`):
 
 ```bash
 minion run --notes "C:\Downloads\Sprint Review - Notes by Gemini.md" --repo my-org/my-repo
 ```
 
-- **The meeting title** is taken from the file name.
-- **Code links:** to have the tickets point to the code, add `--src C:\work\my-repo` (your local copy of the
-  repository). Leave it out when the meeting isn't about code.
-- **Several meetings of the same project:** list the files and add `--each`. Each file is processed as its own
-  meeting, one after another, and you get a combined recap at the end:
-
-  ```bash
-  minion run --each --notes "Planning.md" "Review.md" "Sync.md" --repo my-org/my-repo
-  ```
-
-- **Review:** the terminal shows each draft. Press `a` to approve, `e` to edit (Notepad), `t` to switch
-  Task/User Story, or `r` to reject. Use `m` to merge something that's already ticketed.
-- **Result:** open `out\<meeting>\index.html` for the meeting recap and an *Open as GitHub issue* button per
-  ticket.
-- **Prefer a browser?** Run `minion web` and open http://127.0.0.1:4711.
-
-In PowerShell, type `.\minion` instead of `minion`. The rest of this README has the details.
+- **Meeting title:** taken from the file name.
+- **Code links:** add `--src C:\work\my-repo`. Leave it out for meetings that aren't about code.
+- **Several meetings of the same project:** list the files and add `--each`, e.g.
+  `minion run --each --notes "Planning.md" "Review.md" --repo my-org/my-repo`. You get a combined recap at the end.
+- **Review keys:** `a` approve, `e` edit (Notepad), `t` switch Task/User Story, `r` reject, `m` merge into an
+  existing ticket.
+- **Result:** `out\<meeting>\index.html` has the recap and the GitHub buttons.
 
 > **Phase 1 (MVP1)** produces drafts only. Nothing is created on GitHub.
 > Creating issues, fetching the repo automatically and updating the calendar event come in MVP2.
