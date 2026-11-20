@@ -328,9 +328,9 @@ function card(p, index, total, dup) {
   }
   const dodBox = el("div", { class: "dod" });
   INFO.dod.forEach((name, i) => {
-    dodBox.append(el("label", {}, el("input", { type: "checkbox", name: "dod", value: String(i + 1), checked: c.dod.includes(i + 1) }), `${i + 1}. ${name}`));
+    dodBox.append(el("label", {}, el("input", { type: "checkbox", name: "dod", value: String(i + 1), checked: c.dod.includes(i + 1) }), name));
   });
-  fields.append(el("label", {}, "Definition of Done ", el("span", { class: "hint" }, "(proposed; tailor during DoR)")), dodBox);
+  fields.append(el("label", {}, "Definition of Done ", el("span", { class: "hint" }, "(tick the criteria that apply)")), dodBox);
 
   const context = el("details", {}, el("summary", {}, "Source & related code"));
   for (const s of d.sources) {
