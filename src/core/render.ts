@@ -31,17 +31,11 @@ function quoteLine(q: { text: string; speaker?: string | null; timestamp?: strin
   return `> "${text}"${who ? ` — ${who}` : ""}`;
 }
 
+/** Only the criteria proposed for this ticket; the team tailors the list during refinement. */
 function renderDod(selected: number[]): string {
   const sel = new Set(selected);
   const proposed = DOD_CRITERIA.filter((_, i) => sel.has(i + 1));
-  const others = DOD_CRITERIA.filter((_, i) => !sel.has(i + 1));
-  const lines: string[] = [];
-  if (proposed.length === 0) lines.push(TBD);
-  else lines.push(...proposed.map((name) => `- [ ] ${name}`));
-  if (others.length > 0) {
-    lines.push("", "<details><summary>Other criteria (not proposed for this ticket)</summary>", "", ...others.map((name) => `- ${name}`), "", "</details>");
-  }
-  return lines.join("\n");
+  return proposed.length ? proposed.map((name) => `- [ ] ${name}`).join("\n") : TBD;
 }
 
 /** Hidden, machine-readable metadata used for de-duplication (now) and GitHub search (MVP2). */

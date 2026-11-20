@@ -107,6 +107,8 @@ describe("rendering", () => {
     expect(md).not.toContain("Source & Context");
     expect(md).not.toContain("Proposed by the agent");
     expect(md).not.toMatch(/- \[ \] \d+\./); // no criterion numbers
+    expect(md).not.toContain("<details>"); // only the proposed criteria, no extra list
+    expect(md).toContain("## Definition of Done\n- [ ] Software Detailed Design and Unit Construction\n- [ ] Software Unit Verification\n- [ ] Static Code Analysis\n\n## Deliverable");
     expect(md).toContain("## Dependencies\n- Parent Stakeholder Requirement: _to be linked before the ticket is Ready_");
     expect(md).toContain("**From the meeting:** Planning\n");
     expect(renderDraftFile(draft({ content: { ...content, outOfScope: [] } }))).toContain("## Out of Scope\n_To be defined during refinement_");
