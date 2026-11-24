@@ -7,6 +7,25 @@ export const AGENT_LABEL = "atefs-minion";
 export const DEFAULT_SIGNATURE_IMAGE = "https://raw.githubusercontent.com/MostafaAtef96/atefs-minion/main/assets/minion-signature.png";
 let signatureImage: string | null = DEFAULT_SIGNATURE_IMAGE;
 
+let midSprintTitlePrefix = "";
+let midSprintLabel = "mid-sprint";
+
+/** How mid-sprint tickets are marked: optional title prefix (e.g. "[Mid-sprint]") and GitHub label. */
+export function setMidSprintMarking(opts: { titlePrefix?: string | null; label?: string | null }): void {
+  midSprintTitlePrefix = (opts.titlePrefix ?? "").trim();
+  midSprintLabel = (opts.label ?? "").trim();
+}
+
+/** Issue title, with the mid-sprint prefix when configured. */
+export function issueTitle(draft: Draft): string {
+  return draft.midSprint && midSprintTitlePrefix ? `${midSprintTitlePrefix} ${draft.content.title}` : draft.content.title;
+}
+
+/** GitHub labels for a new issue. */
+export function issueLabels(draft: Draft): string[] {
+  return draft.midSprint && midSprintLabel ? [AGENT_LABEL, midSprintLabel] : [AGENT_LABEL];
+}
+
 /** Set the signature image URL (null = text-only signature). */
 export function setSignatureImage(url: string | null): void {
   signatureImage = url;
@@ -60,6 +79,10 @@ export function renderIssueBody(draft: Draft): string {
   if (draft.owner) extra.push(`**Owner (from meeting):** ${draft.owner}`);
   if (draft.due) extra.push(`**Due (from meeting):** ${draft.due}`);
   const flags = draft.flags.map((f) => `> **Note:** ${f}`);
+  if (draft.midSprint) {
+    const where = draft.sources[0] ? ` in *${draft.sources[0].meetingTitle}*` : "";
+    flags.unshift(`> **Mid-sprint addition:** raised${where} during an active sprint; not part of the sprint planning.`);
+  }
 
   // Meeting context belongs to the Objective (the "why"), code to In Scope (what is changed).
   const fromMeeting = draft.sources.flatMap((s) => [`**From the meeting:** ${s.meetingTitle}`, ...s.quotes.map(quoteLine), ""]);
@@ -112,7 +135,7 @@ export function renderIssueBody(draft: Draft): string {
 
 /** Full draft file: title heading + issue body. */
 export function renderDraftFile(draft: Draft): string {
-  return `# ${draft.content.title}\n\n${renderIssueBody(draft)}`;
+  return `# ${issueTitle(draft)}\n\n${renderIssueBody(draft)}`;
 }
 
 // ---------------------------------------------------------------------------

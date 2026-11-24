@@ -6,7 +6,7 @@ import { z } from "zod";
 import type { AgentFactory } from "../control/session.js";
 import type { MinionConfig } from "../core/config.js";
 import { DOD_CRITERIA } from "../core/dod.js";
-import { FIELD_LABELS, finalize, linkIssue, mergeCandidates, readRecap, type ListField } from "../core/finalize.js";
+import { FIELD_LABELS, finalize, linkIssue, mergeCandidates, readMinutes, type ListField } from "../core/finalize.js";
 import { InputError } from "../core/inputs.js";
 import { generate } from "../core/pipeline.js";
 import { renderDraftFile } from "../core/render.js";
@@ -23,6 +23,7 @@ const RunRequest = z.object({
   meeting: z.string().min(1),
   repo: z.string().min(1),
   project: z.string().optional(),
+  midSprint: z.boolean().optional(),
   force: z.boolean().optional(),
 });
 const FinalizeRequest = z.object({ decisions: z.record(z.string(), ReviewDecision) });
@@ -127,7 +128,7 @@ export async function startWebServer(opts: WebServerOptions): Promise<{ url: str
       jobs.set(job.id, job);
       const note = (m: string) => job.progress.push(m);
       generate(
-        { notes: body.notes, srcPath: body.src?.trim() || null, meetingTitle: body.meeting, repo: body.repo, project: body.project?.trim() || null, force: body.force },
+        { notes: body.notes, srcPath: body.src?.trim() || null, meetingTitle: body.meeting, repo: body.repo, project: body.project?.trim() || null, midSprint: body.midSprint, force: body.force },
         { agents: opts.agents((a) => note(`  ↳ ${a}`)), store, config, onProgress: note },
       ).then(
         (run) => Object.assign(job, { status: "done", meetingId: run.meetingId }),
@@ -136,11 +137,11 @@ export async function startWebServer(opts: WebServerOptions): Promise<{ url: str
       return send(res, 202, { jobId: job.id });
     }
 
-    if (req.method === "GET" && parts[1] === "recap" && parts[2]) {
-      const recap = await readRecap(store, decodeURIComponent(parts[2])).catch((e: Error) => {
+    if (req.method === "GET" && (parts[1] === "minutes" || parts[1] === "recap") && parts[2]) {
+      const minutes = await readMinutes(store, decodeURIComponent(parts[2])).catch((e: Error) => {
         throw new HttpError(404, e.message);
       });
-      return send(res, 200, { markdown: recap });
+      return send(res, 200, { markdown: minutes });
     }
 
     if (req.method === "POST" && parts[1] === "drafts" && parts[2] && parts[3] === "issue") {

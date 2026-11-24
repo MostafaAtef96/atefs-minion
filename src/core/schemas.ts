@@ -30,6 +30,8 @@ export type ExtractedAction = z.infer<typeof ExtractedAction>;
 
 export const P1Output = z.object({
   actions: z.array(ExtractedAction),
+  /** 3–5 main outcomes of the meeting for the Minutes of Meeting email. */
+  highlights: z.array(z.string()).max(8).default([]),
 });
 export type P1Output = z.infer<typeof P1Output>;
 
@@ -107,6 +109,8 @@ export const Draft = z.object({
   flags: z.array(z.string()).default([]),
   /** Where the approved draft was written (absolute path). Set on finalize. */
   file: z.string().nullish(),
+  /** Raised during an active sprint (not part of the sprint planning). */
+  midSprint: z.boolean().default(false),
   /** GitHub project (board) new issues are added to, as "owner/number". */
   project: z.string().nullish(),
   /** URL of the GitHub issue once it exists (added by the user with "minion link" / the web form). */
@@ -146,6 +150,7 @@ export const PendingRun = z.object({
   createdAt: z.string(),
   drafts: z.array(PendingDraft),
   skipped: z.array(SkippedAction),
+  highlights: z.array(z.string()).default([]),
   warnings: z.array(z.string()),
 });
 export type PendingRun = z.infer<typeof PendingRun>;
@@ -157,6 +162,7 @@ export const LedgerMeeting = z.object({
   processedAt: z.string(),
   outDir: z.string(),
   drafts: z.array(z.string()),
+  highlights: z.array(z.string()).default([]),
 });
 export type LedgerMeeting = z.infer<typeof LedgerMeeting>;
 

@@ -124,6 +124,7 @@ export async function generate(rawInputs: RunInputs, deps: PipelineDeps): Promis
 
   const drafts: PendingDraft[] = [];
   const skipped: SkippedAction[] = [];
+  let highlights: string[] = [];
   try {
     const workspace = codeMode
       ? `- Your working directory is a local clone of the GitHub repository \`${repo}\`. You may READ and SEARCH files in it to find related code.`
@@ -142,6 +143,7 @@ export async function generate(rawInputs: RunInputs, deps: PipelineDeps): Promis
       P1Output,
       "P1",
     );
+    highlights = p1.highlights;
     const decided = p1.actions.filter((a) => a.decided);
     for (const a of p1.actions.filter((x) => !x.decided)) {
       skipped.push({ title: a.title, reason: "Not decided in the meeting (discussion only)", quotes: a.quotes });
@@ -203,6 +205,7 @@ export async function generate(rawInputs: RunInputs, deps: PipelineDeps): Promis
         commitSha: sha,
         content,
         project: inputs.project ?? null,
+        midSprint: inputs.midSprint ?? false,
         owner: action.owner ?? null,
         due: action.due ?? null,
         sources: [{ meetingId, meetingTitle: inputs.meetingTitle, quotes: action.quotes }],
@@ -241,6 +244,7 @@ export async function generate(rawInputs: RunInputs, deps: PipelineDeps): Promis
     createdAt: new Date().toISOString(),
     drafts,
     skipped,
+    highlights,
     warnings,
   };
   await store.savePending(run);
