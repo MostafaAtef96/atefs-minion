@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { decidePermission } from "../src/control/permissions.js";
 import { forTerminal } from "../src/cli/review.js";
-import { isIssueUrl, renderRecap } from "../src/core/recap.js";
+import { isIssueUrl, renderMinutes } from "../src/core/recap.js";
 import { emptyLedger } from "../src/core/store.js";
 import { extractJson } from "../src/control/json.js";
 import { loadConfig } from "../src/core/config.js";
@@ -12,7 +12,7 @@ import { MAX_ISSUE_URL, newIssueLink, renderIndexPage } from "../src/core/export
 import { originMatchesRepo, listTrackedFiles, readGitInfo } from "../src/core/git.js";
 import { meetingTitleFromFile, validateInputs } from "../src/core/inputs.js";
 import { permalink, verifyRefs } from "../src/core/refs.js";
-import { AGENT_NAME, DEFAULT_SIGNATURE_IMAGE, parseEditable, renderDraftFile, renderEditable, setSignatureImage } from "../src/core/render.js";
+import { AGENT_NAME, DEFAULT_SIGNATURE_IMAGE, parseEditable, renderDraftFile, renderEditable, setMidSprintMarking, setSignatureImage } from "../src/core/render.js";
 import type { Draft, TicketContent } from "../src/core/schemas.js";
 import { fingerprint, normalizeProject, normalizeRepo, normalizeTitle, repoWebUrl, slugify } from "../src/core/text.js";
 import { makeRepo, tempDir } from "./helpers.js";
@@ -289,27 +289,37 @@ describe("terminal review display", () => {
   });
 });
 
-describe("meeting recap", () => {
-  it("lists decisions with owners, due dates and tickets, repeats and undecided items", () => {
+describe("Minutes of Meeting email", () => {
+  it("has a subject, highlights, action items with owners and tickets, repeats, open points and a sign-off", () => {
     const ledger = emptyLedger();
     const earlier = draft({ id: "e1", content: { ...content, title: "Earlier ticket" }, issueUrl: "https://github.com/tj/commander.js/issues/7" });
     ledger.drafts[earlier.id] = earlier;
-    const recap = renderRecap({
+    const minutes = renderMinutes({
       meetingTitle: "Sprint Review",
+      highlights: ["Demo accepted by the stakeholders", "Release moves to next week"],
       drafts: [
         draft({ owner: "Lena", due: "Friday", issueUrl: "https://github.com/tj/commander.js/issues/12" }),
-        draft({ id: "d2", owner: null, content: { ...content, title: "Second", type: "UserStory" } }),
+        draft({ id: "d2", owner: null, midSprint: true, content: { ...content, title: "Second", type: "UserStory" } }),
       ],
       mergedInto: [{ title: "Raised again", into: "e1" }, { title: "Same meeting repeat", into: "d1" }],
       skipped: ["Drop Node 20 support"],
       ledger,
+      signOff: "Best regards,\nMostafa",
     });
-    expect(recap).toContain("Recap: Sprint Review\n\nDecisions and actions:");
-    expect(recap).toContain(`1. ${content.title}\n   Owner: Lena · Due: Friday · Task\n   Ticket: https://github.com/tj/commander.js/issues/12`);
-    expect(recap).toContain("2. Second\n   Owner: not named in the meeting · User Story\n   Ticket: to be created");
-    expect(recap).toContain('- Raised again: same as "Earlier ticket", ticket https://github.com/tj/commander.js/issues/7');
-    expect(recap).not.toContain("Same meeting repeat"); // already listed above
-    expect(recap).toContain("Discussed, no decision yet:\n- Drop Node 20 support");
+    expect(minutes).toMatch(/^Subject: Minutes of Meeting – Sprint Review\n\nHi all,\n\nthank you for joining\./);
+    expect(minutes).toContain("Highlights:\n- Demo accepted by the stakeholders\n- Release moves to next week");
+    expect(minutes).toContain(`Action items:\n1. ${content.title}\n   Owner: Lena · Due: Friday\n   Ticket: https://github.com/tj/commander.js/issues/12`);
+    expect(minutes).toContain("2. Second\n   Owner: not named in the meeting · mid-sprint\n   Ticket: to be created");
+    expect(minutes).toContain('Already tracked (raised again):\n- Raised again: same as "Earlier ticket", ticket https://github.com/tj/commander.js/issues/7');
+    expect(minutes).not.toContain("Same meeting repeat");
+    expect(minutes).toContain("Open points (no decision yet):\n- Drop Node 20 support");
+    expect(minutes).toMatch(/Best regards,\nMostafa\n$/);
+  });
+
+  it("leaves out the highlights section when there are none", () => {
+    const m = renderMinutes({ meetingTitle: "T", highlights: [], drafts: [], mergedInto: [], skipped: [], ledger: emptyLedger() });
+    expect(m).not.toContain("Highlights:");
+    expect(m).toContain("Action items:\n- No new action items.");
   });
 
   it("accepts only GitHub-style issue URLs", () => {
@@ -399,5 +409,26 @@ describe("adding new issues to a GitHub project board", () => {
     const base = { notes: [{ name: "n.md", content: "x" }], srcPath: null, meetingTitle: "T", repo: "o/r" };
     expect((await validateInputs({ ...base, project: "https://ghe.example.com/orgs/TEAM/projects/9/views/1" })).project).toBe("TEAM/9");
     await expect(validateInputs({ ...base, project: "not a project" })).rejects.toThrow(/project board/);
+  });
+});
+
+describe("mid-sprint tickets", () => {
+  it("are marked in the description and the GitHub labels; the title prefix is optional", () => {
+    const d = draft({ midSprint: true });
+    const md = renderDraftFile(d);
+    expect(md).toContain("> **Mid-sprint addition:** raised in *Planning* during an active sprint; not part of the sprint planning.");
+    expect(md.startsWith(`# ${content.title}`)).toBe(true);
+    expect(new URL(newIssueLink(d).url).searchParams.get("labels")).toBe("atefs-minion,mid-sprint");
+    expect(new URL(newIssueLink(draft()).url).searchParams.get("labels")).toBe("atefs-minion");
+    expect(renderDraftFile(draft())).not.toContain("Mid-sprint");
+    setMidSprintMarking({ titlePrefix: "[Mid-sprint]", label: "unplanned" });
+    try {
+      expect(renderDraftFile(d).startsWith(`# [Mid-sprint] ${content.title}`)).toBe(true);
+      const url = new URL(newIssueLink(d).url);
+      expect(url.searchParams.get("title")).toBe(`[Mid-sprint] ${content.title}`);
+      expect(url.searchParams.get("labels")).toBe("atefs-minion,unplanned");
+    } finally {
+      setMidSprintMarking({ titlePrefix: "", label: "mid-sprint" });
+    }
   });
 });

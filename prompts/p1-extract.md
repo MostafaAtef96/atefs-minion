@@ -18,9 +18,11 @@ For each action item return:
 
 Merge items that describe the same action. Do not split one action into sub-tasks.
 
+Also return `highlights`: 3 to 5 short bullets with the main outcomes of the meeting (decisions, important information, agreed direction), written for the participants of a Minutes of Meeting email. Use the language of the meeting notes. No action items here, they are listed separately.
+
 Return:
 ```json
-{"actions": [{"title": "...", "type": "UserStory", "owner": null, "due": null, "summary": "...", "quotes": [{"text": "...", "speaker": null, "timestamp": null}], "decided": true, "confidence": 0.9, "otherTarget": null}]}
+{"actions": [{"title": "...", "type": "UserStory", "owner": null, "due": null, "summary": "...", "quotes": [{"text": "...", "speaker": null, "timestamp": null}], "decided": true, "confidence": 0.9, "otherTarget": null}], "highlights": ["..."]}
 ```
 
 Meeting material ({{fileCount}} file(s)):

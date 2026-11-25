@@ -3,7 +3,7 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { MinionConfig } from "../src/core/config.js";
-import { finalize, linkIssue, readRecap, removeDraft } from "../src/core/finalize.js";
+import { finalize, linkIssue, readMinutes, removeDraft } from "../src/core/finalize.js";
 import { generate, MeetingAlreadyProcessedError } from "../src/core/pipeline.js";
 import type { PendingRun, ReviewDecision } from "../src/core/schemas.js";
 import { Store } from "../src/core/store.js";
@@ -71,13 +71,17 @@ describe("pipeline on the synthetic samples", () => {
       "02-add-opt-in-json-help-output.md",
       "index.html",
       "manifest.json",
-      "recap.md",
+      "minutes.md",
       "run.log",
     ]);
-    const recap = await readFile(path.join(outDir, "recap.md"), "utf8");
-    expect(recap).toContain("1. Mention env variable in missing mandatory option error\n   Owner: Lena Hoffmann · Task\n   Ticket: to be created");
-    expect(recap).toContain("Discussed, no decision yet:\n- Drop Node 20 support");
-    expect(result.recap).toBe(path.join(outDir, "recap.md"));
+    const minutes = await readFile(path.join(outDir, "minutes.md"), "utf8");
+    expect(minutes).toMatch(/^Subject: Minutes of Meeting – Planning 2026-11-03\n\nHi all,/);
+    expect(minutes).toContain("Highlights:\n- Next iteration focuses on clearer errors and machine-readable help\n- Dropping Node 20 waits for the next major release");
+    expect(minutes).toContain("Action items:\n1. Mention env variable in missing mandatory option error\n   Owner: Lena Hoffmann\n   Ticket: to be created");
+    expect(minutes).toContain("Open points (no decision yet):\n- Drop Node 20 support");
+    expect(minutes).toMatch(/Best regards\n$/);
+    expect(result.minutes).toBe(path.join(outDir, "minutes.md"));
+    expect((await store.loadLedger()).meetings["planning-2026-11-03"]!.highlights).toHaveLength(2);
     const index = await readFile(path.join(outDir, "index.html"), "utf8");
     expect(index.match(/Open as GitHub issue/g)).toHaveLength(2);
     expect(result.written[0]!.issueUrl).toMatch(/^https:\/\/github\.com\/tj\/commander\.js\/issues\/new\?title=Mention/);
@@ -238,10 +242,10 @@ describe("meeting recap and issue links", () => {
 
     await expect(linkIssue(store, envDraft, "https://github.com/tj/commander.js/pull/1")).rejects.toThrow(/Not a GitHub issue URL/);
     await linkIssue(store, envDraft, "https://github.com/tj/commander.js/issues/42");
-    expect(await readRecap(store, "planning-2026-11-03")).toContain("Ticket: https://github.com/tj/commander.js/issues/42");
+    expect(await readMinutes(store, "planning-2026-11-03")).toContain("Ticket: https://github.com/tj/commander.js/issues/42");
     const index = await readFile(path.join(config.outDir, "planning-2026-11-03", "index.html"), "utf8");
     expect(index).toContain('href="https://github.com/tj/commander.js/issues/42"');
-    expect(index).toContain("Meeting recap");
+    expect(index).toContain("Minutes of Meeting (email)");
 
     // a later meeting that only repeats the action still gets a recap pointing to the same ticket
     const m3 = await runMeeting("Sprint Review 2026-11-17", ["03-sprint-review-2026-11-17.md"]);
@@ -250,11 +254,12 @@ describe("meeting recap and issue links", () => {
       [repeated!.draft.id]: { action: "merge", into: envDraft },
       [fresh!.draft.id]: { action: "reject" },
     }, { store, config });
-    expect(r3.recap).toBe(path.join(config.outDir, "sprint-review-2026-11-17", "recap.md"));
-    const recap3 = (await readRecap(store, "sprint-review-2026-11-17"))!;
-    expect(recap3).toContain("- No new actions.");
+    expect(r3.minutes).toBe(path.join(config.outDir, "sprint-review-2026-11-17", "minutes.md"));
+    const recap3 = (await readMinutes(store, "sprint-review-2026-11-17"))!;
+    expect(recap3).toContain("- No new action items.");
+    expect(recap3).toContain("Already tracked (raised again):");
     expect(recap3).toContain("same as \"Mention env variable in missing mandatory option error\", ticket https://github.com/tj/commander.js/issues/42");
-    await expect(readRecap(store, "nope")).rejects.toThrow(/No meeting/);
+    await expect(readMinutes(store, "nope")).rejects.toThrow(/No meeting/);
   });
 });
 
@@ -263,11 +268,12 @@ describe("meetings that are not about code", () => {
     const responder = scenario();
     const agents = new FakeAgentFactory(responder);
     const run = await generate(
-      { notes: await sample("01-planning-2026-11-03.md"), srcPath: null, meetingTitle: "Planning 2026-11-03", repo: "tj/commander.js" },
+      { notes: await sample("01-planning-2026-11-03.md"), srcPath: null, meetingTitle: "Planning 2026-11-03", repo: "tj/commander.js", midSprint: true },
       { agents, store, config },
     );
     expect(run.drafts).toHaveLength(3);
     expect(run.drafts.every((d) => d.draft.refs.length === 0 && d.draft.commitSha === null)).toBe(true);
+    expect(run.drafts.every((d) => d.draft.midSprint)).toBe(true);
     expect(responder.calls["P2"]).toBe(0);
     expect(run.srcPath).toBeNull();
     expect(agents.opened[0]).not.toBe(repo);

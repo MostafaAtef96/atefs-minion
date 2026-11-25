@@ -101,6 +101,7 @@
     <label class="inline"><input id="nocode" type="checkbox"> Not about code <span class="hint">(no code search, no code links)</span></label>
     <div class="actions">
       <button id="start">Generate drafts</button>
+      <label class="hint" style="display:inline-flex;gap:6px;margin:0"><input id="midsprint" type="checkbox"> mid-sprint additions</label>
       <label class="hint" style="display:inline-flex;gap:6px;margin:0"><input id="force" type="checkbox"> process again even if already processed</label>
     </div>
     <pre id="progress" class="log" hidden></pre>
@@ -210,7 +211,7 @@ async function runMeeting(item) {
   const notes = await Promise.all(item.files.map(async (f) => ({ name: f.name, content: await f.text() })));
   const { jobId } = await api("/api/runs", {
     notes, src: $("nocode").checked ? "" : $("src").value.trim(), meeting: item.title, repo: $("repo").value.trim(),
-    project: $("project").value.trim(), force: $("force").checked,
+    project: $("project").value.trim(), midSprint: $("midsprint").checked, force: $("force").checked,
   });
   for (;;) {
     await new Promise((r) => setTimeout(r, 1000));
@@ -267,17 +268,17 @@ $("start").addEventListener("click", async () => {
 /** Called after a meeting's decisions are saved: offer the next meeting, or the combined recap at the end. */
 function afterSave(result) {
   if (!QUEUE) return null;
-  if (result.recap) QUEUE.saved.push({ id: CURRENT.run.meetingId, title: CURRENT.run.meetingTitle });
+  if (result.minutes) QUEUE.saved.push({ id: CURRENT.run.meetingId, title: CURRENT.run.meetingTitle });
   QUEUE.index += 1;
   if (QUEUE.index < QUEUE.items.length) {
     const next = QUEUE.items[QUEUE.index];
     return el("div", { class: "actions" },
       el("button", { type: "button", onclick: () => { $("new-run").scrollIntoView({ behavior: "smooth" }); nextMeeting(); } },
         `Continue with meeting ${QUEUE.index + 1} of ${QUEUE.items.length}: ${next.title}`),
-      el("span", { class: "hint" }, "Copy this meeting's recap or add issue links first if you like."));
+      el("span", { class: "hint" }, "Copy this meeting's minutes or add issue links first if you like."));
   }
   if (QUEUE.items.length > 1) {
-    return el("div", { class: "actions" }, el("button", { type: "button", onclick: showCombinedRecap }, "Show the combined recap of all meetings"));
+    return el("div", { class: "actions" }, el("button", { type: "button", onclick: showCombinedRecap }, "Show the combined minutes of all meetings"));
   }
   return null;
 }
@@ -285,13 +286,13 @@ function afterSave(result) {
 async function showCombinedRecap() {
   const parts = [];
   for (const m of QUEUE.saved) {
-    try { const r = (await api(`/api/recap/${encodeURIComponent(m.id)}`)).markdown; if (r) parts.push(r.trim()); } catch {}
+    try { const r = (await api(`/api/minutes/${encodeURIComponent(m.id)}`)).markdown; if (r) parts.push(r.trim()); } catch {}
   }
   const text = parts.join("\n\n----------------------------------------\n\n");
-  const pre = el("pre", {}, text || "No recap: nothing was approved or merged.");
-  const copy = el("button", { type: "button", onclick: async () => { await navigator.clipboard.writeText(text).catch(() => {}); copy.textContent = "Copied"; } }, "Copy combined recap");
+  const pre = el("pre", {}, text || "No minutes: nothing was approved or merged.");
+  const copy = el("button", { type: "button", onclick: async () => { await navigator.clipboard.writeText(text).catch(() => {}); copy.textContent = "Copied"; } }, "Copy all minutes");
   const box = el("div", { class: "recap", id: "combined-recap" },
-    el("div", { class: "card-head" }, el("h3", {}, `Combined recap · ${QUEUE.saved.length} meeting(s)`), copy),
+    el("div", { class: "card-head" }, el("h3", {}, `Minutes of all ${QUEUE.saved.length} meeting(s)`), copy),
     QUEUE.skipped.length ? el("div", { class: "hint" }, `Skipped (already processed): ${QUEUE.skipped.join(", ")}`) : null,
     pre);
   $("review").hidden = false;
@@ -431,17 +432,17 @@ function recapBox() {
   const copy = el("button", { type: "button", onclick: async () => {
     await navigator.clipboard.writeText(pre.textContent).catch(() => {});
     copy.textContent = "Copied";
-  } }, "Copy recap");
+  } }, "Copy email");
   return el("div", { class: "recap", id: "recap" },
-    el("div", { class: "card-head" }, el("h3", {}, "Meeting recap"), copy),
-    el("div", { class: "hint" }, "Ready to send to the attendees. Ticket links appear as you link the created issues above."),
+    el("div", { class: "card-head" }, el("h3", {}, "Minutes of Meeting (email)"), copy),
+    el("div", { class: "hint" }, "Copy it into an email to the participants. Ticket links appear as you link the created issues above."),
     pre);
 }
 
 async function refreshRecap(meetingId) {
   const pre = document.getElementById("recap-text");
   if (!pre) return;
-  try { pre.textContent = (await api(`/api/recap/${encodeURIComponent(meetingId)}`)).markdown || ""; }
+  try { pre.textContent = (await api(`/api/minutes/${encodeURIComponent(meetingId)}`)).markdown || ""; }
   catch (e) { pre.textContent = e.message; }
 }
 
@@ -478,10 +479,10 @@ $("finalize").addEventListener("click", async () => {
       ...(r.outDir ? [el("p", {}, `All files are in ${r.outDir}`, el("br"), el("span", { class: "hint" },
         "One Markdown file per ticket, manifest.json, and "), el("a", { href: `/out/${encodeURIComponent(CURRENT.run.meetingId)}`, target: "_blank", id: "index-link" }, "index.html"),
         el("span", { class: "hint" }, " with the same GitHub buttons, for later."))] : []),
-      ...(r.recap ? [recapBox()] : []),
+      ...(r.minutes ? [recapBox()] : []),
       ...[afterSave(r)].filter(Boolean),
     );
-    if (r.recap) await refreshRecap(CURRENT.run.meetingId);
+    if (r.minutes) await refreshRecap(CURRENT.run.meetingId);
     await loadPending();
   } catch (e) {
     $("finalize").disabled = false;

@@ -5,8 +5,9 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline/promises";
-import { finalize, linkIssue, readRecap, removeDraft, type FinalizeResult } from "../core/finalize.js";
-import { setSignatureImage } from "../core/render.js";
+import { finalize, linkIssue, readMinutes, removeDraft, type FinalizeResult } from "../core/finalize.js";
+import { setMidSprintMarking, setSignatureImage } from "../core/render.js";
+import { setMinutesSignOff } from "../core/recap.js";
 import { InputError, meetingTitleFromFile, readNotesFiles } from "../core/inputs.js";
 import { generate, MeetingAlreadyProcessedError } from "../core/pipeline.js";
 import { Store } from "../core/store.js";
@@ -26,6 +27,8 @@ function config(): MinionConfig {
   const opts = program.opts<{ config?: string; out?: string; log: boolean }>();
   const cfg = loadConfig(opts.config);
   setSignatureImage(cfg.signatureImage);
+  setMidSprintMarking({ titlePrefix: cfg.midSprintTitlePrefix, label: cfg.midSprintLabel });
+  setMinutesSignOff(cfg.minutesSignOff);
   if (opts.out) cfg.outDir = opts.out;
   if (!opts.log) cfg.logPrompts = false;
   return cfg;
@@ -48,7 +51,7 @@ function printResult(r: FinalizeResult): void {
   for (const t of r.rejected) console.log(`Rejected: ${t}`);
   if (r.outDir) console.log(`\nDrafts and manifest: ${r.outDir}`);
   if (r.indexPage) console.log(`Open ${r.indexPage} to create the tickets on GitHub (one click each).`);
-  if (r.recap) console.log(`Meeting recap for the attendees: ${r.recap}  (print it with "minion recap <meeting-id>")`);
+  if (r.minutes) console.log(`Minutes of Meeting email: ${r.minutes}  (print it with "minion minutes <meeting-id>")`);
 }
 
 program
@@ -60,11 +63,12 @@ program
   .option("-p, --project <link>", "GitHub project board to add the new issues to (its link, or owner/number)")
   .option("-s, --src <path>", "local copy (git clone) of that repository, for code links; leave out if the meeting is not about code")
   .option("--no-code", "do not look at any code, even if --src or a default is set")
+  .option("--mid-sprint", "the tickets are mid-sprint additions (marked in the description, label, minutes)")
   .option("--each", "every --notes file is a separate meeting of the same project (processed one after another)")
   .option("-f, --force", "process again even if a meeting was already processed")
   .option("--no-review", "generate drafts only; review later with `minion review`")
   .action(async (opts: {
-    notes: string[]; meeting?: string; src?: string; code: boolean; each?: boolean; repo?: string; project?: string; force?: boolean; review: boolean;
+    notes: string[]; meeting?: string; src?: string; code: boolean; each?: boolean; repo?: string; project?: string; midSprint?: boolean; force?: boolean; review: boolean;
   }) => {
     const cfg = config();
     const store = new Store(cfg.stateDir);
@@ -85,7 +89,7 @@ program
       let run;
       try {
         run = await generate(
-          { notes: await readNotesFiles(files), srcPath, meetingTitle, repo, project: opts.project ?? cfg.defaultProject ?? null, force: opts.force },
+          { notes: await readNotesFiles(files), srcPath, meetingTitle, repo, project: opts.project ?? cfg.defaultProject ?? null, midSprint: opts.midSprint, force: opts.force },
           { agents, store, config: cfg, onProgress: progress },
         );
       } catch (e) {
@@ -103,15 +107,15 @@ program
       const decisions = run.drafts.length ? await reviewInTerminal(run, await store.loadLedger()) : {};
       const result = await finalize(run, decisions, { store, config: cfg });
       printResult(result);
-      if (result.recap) recaps.push({ title: run.meetingTitle, file: result.recap });
+      if (result.minutes) recaps.push({ title: run.meetingTitle, file: result.minutes });
     }
 
     if (recaps.length > 1) {
-      const combined = path.join(cfg.outDir, `combined-recap-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.md`);
+      const combined = path.join(cfg.outDir, `combined-minutes-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.md`);
       const parts = await Promise.all(recaps.map((r) => readFile(r.file, "utf8")));
       await mkdir(cfg.outDir, { recursive: true });
       await writeFile(combined, parts.map((p) => p.trim()).join("\n\n----------------------------------------\n\n") + "\n", "utf8");
-      console.log(`\nCombined recap of all ${recaps.length} meetings: ${combined}`);
+      console.log(`\nCombined minutes of all ${recaps.length} meetings: ${combined}`);
     }
   });
 
@@ -167,20 +171,21 @@ program
   });
 
 program
-  .command("recap <meetingId>")
-  .description("print the ready-to-send meeting recap (decisions, actions, owners, tickets)")
+  .command("minutes <meetingId>")
+  .alias("recap")
+  .description("print the Minutes of Meeting email (highlights, action items, owners, tickets, open points)")
   .action(async (meetingId: string) => {
-    const recap = await readRecap(new Store(config().stateDir), meetingId);
-    if (!recap) throw new Error(`No recap for "${meetingId}": nothing was approved or merged in that meeting.`);
-    console.log(recap);
+    const minutes = await readMinutes(new Store(config().stateDir), meetingId);
+    if (!minutes) throw new Error(`No minutes for "${meetingId}": nothing was approved or merged in that meeting.`);
+    console.log(minutes);
   });
 
 program
   .command("link <draftId> <issueUrl>")
-  .description("record the GitHub issue created for a draft; recaps and index pages then show the link")
+  .description("record the GitHub issue created for a draft; the minutes and index pages then show the link")
   .action(async (draftId: string, issueUrl: string) => {
     const r = await linkIssue(new Store(config().stateDir), draftId, issueUrl);
-    console.log(`Linked "${r.title}" to ${issueUrl}.${r.meetings.length ? ` Updated recap of ${r.meetings.join(", ")}.` : ""}`);
+    console.log(`Linked "${r.title}" to ${issueUrl}.${r.meetings.length ? ` Updated the minutes of ${r.meetings.join(", ")}.` : ""}`);
   });
 
 const ledgerCmd = program.command("ledger").description("inspect processed meetings and drafts");

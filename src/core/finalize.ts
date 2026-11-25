@@ -3,7 +3,7 @@ import { copyFile, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promi
 import path from "node:path";
 import type { MinionConfig } from "./config.js";
 import { newIssueLink, renderIndexPage } from "./export.js";
-import { isIssueUrl, renderRecap } from "./recap.js";
+import { isIssueUrl, renderMinutes } from "./recap.js";
 import { AGENT_LABEL, AGENT_NAME, renderDraftFile, renderIssueBody } from "./render.js";
 import type { Draft, Ledger, MergeAdditions, PendingRun, ReviewDecision, TicketContent, VerifiedRef } from "./schemas.js";
 import type { Store } from "./store.js";
@@ -92,8 +92,8 @@ export interface FinalizeResult {
   written: { draftId: string; file: string; title: string; issueUrl: string; issueUrlComplete: boolean; body: string }[];
   /** out/<meeting>/index.html with "Open as GitHub issue" buttons (null when nothing was written). */
   indexPage: string | null;
-  /** out/<meeting>/recap.md, the ready-to-send meeting recap (null when nothing was decided). */
-  recap: string | null;
+  /** out/<meeting>/minutes.md, the Minutes of Meeting email (null when nothing was decided). */
+  minutes: string | null;
   merged: { draftId: string; into: string; file: string | null }[];
   rejected: string[];
 }
@@ -113,7 +113,7 @@ export async function finalize(
   }
   const ledger = await deps.store.loadLedger();
   const outDir = path.join(deps.config.outDir, run.meetingId);
-  const result: FinalizeResult = { outDir: null, written: [], merged: [], rejected: [], indexPage: null, recap: null };
+  const result: FinalizeResult = { outDir: null, written: [], merged: [], rejected: [], indexPage: null, minutes: null };
   // A forced re-run of a meeting keeps the drafts approved earlier and continues the numbering.
   const previous = ledger.meetings[run.meetingId];
   const meetingDraftIds: string[] = [...(previous?.drafts ?? [])];
@@ -156,6 +156,7 @@ export async function finalize(
     processedAt: new Date().toISOString(),
     outDir: approved.length || result.merged.length || previous?.outDir ? outDir : "",
     drafts: meetingDraftIds,
+    highlights: run.highlights,
   };
 
   if (approved.length || result.merged.length) {
@@ -168,7 +169,7 @@ export async function finalize(
       commitSha: run.commitSha,
     });
     result.indexPage = path.join(outDir, "index.html");
-    result.recap = path.join(outDir, "recap.md");
+    result.minutes = path.join(outDir, "minutes.md");
     const log = deps.store.pendingLogFile(run.meetingId);
     if (deps.config.logPrompts && existsSync(log)) await copyFile(log, path.join(outDir, "run.log"));
   }
@@ -233,28 +234,29 @@ export async function writeManifest(ledger: Ledger, meetingId: string, extras: M
   };
   await writeAtomic(file, JSON.stringify(manifest, null, 2));
   const live = meeting.drafts.map((id) => ledger.drafts[id]).filter((d): d is Draft => Boolean(d));
-  const recap = renderRecap({
+  const minutes = renderMinutes({
     meetingTitle: meeting.title,
+    highlights: meeting.highlights,
     drafts: live,
     mergedInto: manifest.mergedInto as { title: string; into: string }[],
     skipped: manifest.skipped as string[],
     ledger,
   });
-  await writeAtomic(path.join(meeting.outDir, "recap.md"), recap);
-  await writeAtomic(path.join(meeting.outDir, "index.html"), renderIndexPage(meeting.title, meeting.repo, live, recap));
+  await writeAtomic(path.join(meeting.outDir, "minutes.md"), minutes);
+  await writeAtomic(path.join(meeting.outDir, "index.html"), renderIndexPage(meeting.title, meeting.repo, live, minutes));
 }
 
-/** Read a meeting's recap (null when the meeting has no output folder). */
-export async function readRecap(store: Store, meetingId: string): Promise<string | null> {
+/** Read a meeting's Minutes of Meeting email (null when the meeting has no output folder). */
+export async function readMinutes(store: Store, meetingId: string): Promise<string | null> {
   const meeting = (await store.loadLedger()).meetings[meetingId];
   if (!meeting) throw new Error(`No meeting "${meetingId}". See "minion ledger list".`);
   if (!meeting.outDir) return null;
-  return readFile(path.join(meeting.outDir, "recap.md"), "utf8").catch(() => null);
+  return readFile(path.join(meeting.outDir, "minutes.md"), "utf8").catch(() => null);
 }
 
 /**
- * Record the GitHub issue created for a draft. The draft file, the manifests, index pages and recaps of
- * every meeting are regenerated, so the recap shows the ticket link.
+ * Record the GitHub issue created for a draft. The draft file, the manifests, index pages and minutes of
+ * every meeting are regenerated, so the minutes show the ticket link.
  */
 export async function linkIssue(store: Store, draftId: string, url: string): Promise<{ title: string; meetings: string[] }> {
   if (!isIssueUrl(url)) throw new Error(`Not a GitHub issue URL: ${url} (expected something like https://github.com/owner/repo/issues/123)`);

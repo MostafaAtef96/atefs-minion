@@ -83,7 +83,10 @@ export function scenario(opts: ScenarioOptions = {}): Responder & { calls: Recor
     if (prompt.includes("# Task P1")) {
       calls["P1"]! += 1;
       const meeting = /Meeting: "([^"]+)"/.exec(prompt)![1]!;
-      return "Here you go:\n" + json({ actions: ACTIONS[meeting] ?? [] });
+      const highlights = meeting.startsWith("Planning")
+        ? ["Next iteration focuses on clearer errors and machine-readable help", "Dropping Node 20 waits for the next major release"]
+        : [];
+      return "Here you go:\n" + json({ actions: ACTIONS[meeting] ?? [], highlights });
     }
     if (prompt.includes("# Task P2")) {
       calls["P2"]! += 1;

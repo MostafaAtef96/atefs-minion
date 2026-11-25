@@ -20,14 +20,14 @@ In the browser:
 
 1. **Choose the notes:** export the "Notes by Gemini" document (*File → Download → Markdown*) and pick the file.
    You can pick **several files**; the form then asks whether they're separate meetings of the same project
-   (reviewed one after another, with a combined recap at the end) or one meeting (notes + transcript).
+   (reviewed one after another, with the minutes of all meetings at the end) or one meeting (notes + transcript).
 2. **GitHub ticket repository:** `owner/name`, or simply paste the repository's link. Links on a company GitHub
    server work too, and all links then point to that server. It's remembered for next time.
 3. **GitHub project (optional):** paste your project board's link (for example `https://…/orgs/OWNER/projects/9`).
    New issues created with *Open as GitHub issue* are then added to that board. GitHub doesn't add repository
    issues to a board by itself, and Status or Iteration are still set on the board as usual.
 4. **Code links:** fill in your local code folder, or tick **Not about code**.
-5. **Generate drafts,** review each ticket, then **Save decisions.** You get the meeting recap (with *Copy recap*) and
+5. **Generate drafts,** review each ticket, then **Save decisions.** You get a Minutes of Meeting email (with *Copy email*) and
    an *Open as GitHub issue* button per ticket.
 
 **Prefer the command line?** Open a Command Prompt in the minion folder (in PowerShell, type `.\minion`):
@@ -41,10 +41,11 @@ minion run --notes "C:\Downloads\Sprint Review - Notes by Gemini.md" --repo my-o
 - **Project board:** add `--project "<board link>"` so new issues land on it (or set `defaultProject` in
   `minion.config.json`).
 - **Several meetings of the same project:** list the files and add `--each`, e.g.
-  `minion run --each --notes "Planning.md" "Review.md" --repo my-org/my-repo`. You get a combined recap at the end.
+  `minion run --each --notes "Planning.md" "Review.md" --repo my-org/my-repo`. You get the minutes of all meetings at the end.
 - **Review keys:** `a` approve, `e` edit (Notepad), `t` switch Task/User Story, `r` reject, `m` merge into an
   existing ticket.
-- **Result:** `out\<meeting>\index.html` has the recap and the GitHub buttons.
+- **Mid-sprint tickets:** add `--mid-sprint` (or tick *mid-sprint additions* in the web form).
+- **Result:** `out\<meeting>\index.html` has the minutes email and the GitHub buttons.
 
 > **Phase 1 (MVP1)** produces drafts only. Nothing is created on GitHub.
 > Creating issues, fetching the repo automatically and updating the calendar event come in MVP2.
@@ -98,6 +99,9 @@ Copy `minion.config.example.json` to `minion.config.json` in the folder you run 
 | `maxRetries` | `2` | Retries when Gemini's answer doesn't match the expected JSON |
 | `logPrompts` | `true` | Keep prompts and answers in `run.log` (local only) |
 | `promptTimeoutSec` | `600` | Timeout for a single Gemini turn, in seconds |
+| `minutesSignOff` | `Best regards` | Closing line of the Minutes of Meeting email |
+| `midSprintTitlePrefix` | – | Title prefix for mid-sprint tickets, e.g. `[Mid-sprint]` |
+| `midSprintLabel` | `mid-sprint` | GitHub label for mid-sprint tickets (empty = none) |
 | `signatureImage` | mascot PNG in this repo | Image URL shown next to the ticket signature; `null` = text only. A company GitHub server may block images from github.com: if the mascot shows as a broken image there, set this to `null` |
 | `webPort` | `4711` | Port of the local web form |
 
@@ -139,8 +143,8 @@ minion run … --no-review         generate drafts now, review later
 minion review                    list meetings waiting for review
 minion review <meeting-id>       review them
 minion web [--port 4711]         local web form + review table (http://127.0.0.1:4711)
-minion recap <meeting-id>        print the meeting recap, ready to send to the attendees
-minion link <draft-id> <url>     record the GitHub issue created for a draft (the recap then shows it)
+minion minutes <meeting-id>      print the Minutes of Meeting email, ready to send to the participants
+minion link <draft-id> <url>     record the GitHub issue created for a draft (the minutes then show it)
 minion ledger list               processed meetings and their drafts
 minion ledger show <id>          details of a meeting or draft
 minion ledger remove <draft-id>  remove a draft created by mistake (deletes its file; asks first)
@@ -167,8 +171,8 @@ The server listens on `127.0.0.1` only.
 ```
 out/<meeting-id>/
   01-<title>.md     draft: "# Title" + body in the Standardized Ticket Format, signed by Atef's Minion
-  index.html        open it in a browser: the meeting recap and one "Open as GitHub issue" button per ticket
-  recap.md          ready-to-send meeting recap for the attendees (see below)
+  index.html        open it in a browser: the minutes email and one "Open as GitHub issue" button per ticket
+  minutes.md        Minutes of Meeting email for the participants (see below)
   manifest.json     machine-readable drafts (issue title/body/labels) — input for MVP2
   run.log           every prompt and answer (including retries), each file Gemini read or searched,
                     every tool the app allowed or denied, and the total run time (turn off with --no-log)
@@ -202,34 +206,59 @@ The button opens GitHub's *New issue* page for the repository, with the title, t
 nothing is created until you submit. For a very long ticket the body doesn't fit in the link, so it is
 copied to your clipboard to paste instead.
 
-### Meeting recap
+### Minutes of Meeting email
 
-After each review, the minion writes a short recap for the people who attended. It's plain text, so it
-pastes cleanly into an email or chat:
+After each review, the minion writes a Minutes of Meeting email that you can copy and send to the participants.
+It's plain text, so it pastes cleanly into any email program:
 
 ```text
-Recap: Planning 2026-11-03
+Subject: Minutes of Meeting – Planning 2026-11-03
 
-Decisions and actions:
+Hi all,
+
+thank you for joining. Please find the minutes of the meeting below.
+
+Highlights:
+- Next iteration focuses on clearer errors and machine-readable help
+- Dropping Node 20 waits for the next major release
+
+Action items:
 1. Include environment variable in missing mandatory option error
-   Owner: Lena Hoffmann · User Story
+   Owner: Lena Hoffmann
    Ticket: https://github.com/tj/commander.js/issues/42
 2. Add regression test suite for Did you mean suggestions
-   Owner: Omar Said · Due: this iteration · Task
+   Owner: Omar Said · Due: this iteration
    Ticket: to be created
 
-Discussed, no decision yet:
+Open points (no decision yet):
 - Drop Node 20 support
+
+Best regards
 ```
 
-- **Owners and due dates** come from the meeting itself. If the meeting didn't name an owner, the recap says so
+- **Highlights:** 3 to 5 main outcomes, written by the AI in the language of the meeting notes, in the same step
+  that finds the action items.
+- **Owners and due dates** come from the meeting itself. If the meeting didn't name an owner, the email says so
   instead of guessing.
 - **Ticket links:** after you create an issue on GitHub, add its URL. In the web form, paste it into the field next
   to the ticket. On the command line, run `minion link <draft-id> <issue-url>` (draft ids are shown by
-  `minion ledger list`). The recap, `index.html` and the recaps of later meetings that repeated the action are
+  `minion ledger list`). The email, `index.html` and the minutes of later meetings that repeated the action are
   updated straight away.
-- **Repeated actions** are listed under "Raised again (already ticketed)", pointing to the existing ticket.
-- **Copying the recap:** use **Copy recap** in the web form or in `index.html`, or run `minion recap <meeting-id>`.
+- **Repeated actions** are listed under "Already tracked (raised again)", pointing to the existing ticket.
+- **Copying:** use **Copy email** in the web form or in `index.html`, or run `minion minutes <meeting-id>`.
+- **Sign-off:** set `minutesSignOff` in `minion.config.json`, e.g. `"Best regards,\nMostafa"`.
+
+### Mid-sprint tickets
+
+Tick **mid-sprint additions** in the web form (or add `--mid-sprint`) when the meeting happens during an active
+sprint. Every ticket from that run then gets:
+
+- a note at the top of the description: *"Mid-sprint addition: raised in <meeting> during an active sprint; not
+  part of the sprint planning."*
+- the GitHub label `mid-sprint` (GitHub only applies labels that exist in the repository; change it with
+  `midSprintLabel`)
+- "mid-sprint" next to the owner in the minutes email
+- optionally, a title prefix: set `midSprintTitlePrefix`, e.g. `"[Mid-sprint]"`
 
 ## Duplicate prevention
 

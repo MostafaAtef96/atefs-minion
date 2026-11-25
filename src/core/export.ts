@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { AGENT_LABEL, AGENT_NAME, renderIssueBody } from "./render.js";
+import { AGENT_NAME, issueLabels, issueTitle, renderIssueBody } from "./render.js";
 import type { Draft } from "./schemas.js";
 import { repoWebUrl } from "./text.js";
 
@@ -22,10 +22,10 @@ export interface IssueLink {
  * created until the user clicks "Submit new issue" on GitHub.
  */
 export function newIssueLink(draft: Draft): IssueLink {
-  const title = draft.content.title;
+  const title = issueTitle(draft);
   const body = renderIssueBody(draft);
   const project = draft.project ? `&projects=${encodeURIComponent(draft.project)}` : "";
-  const base = `${repoWebUrl(draft.repo)}/issues/new?title=${encodeURIComponent(title)}&labels=${encodeURIComponent(AGENT_LABEL)}${project}`;
+  const base = `${repoWebUrl(draft.repo)}/issues/new?title=${encodeURIComponent(title)}&labels=${encodeURIComponent(issueLabels(draft).join(","))}${project}`;
   const full = `${base}&body=${encodeURIComponent(body)}`;
   return full.length <= MAX_ISSUE_URL
     ? { url: full, complete: true, title, body }
@@ -94,8 +94,8 @@ export function renderIndexPage(meetingTitle: string, repo: string, drafts: Draf
 <body>
 <header>${mascot}<div><h1>${esc(meetingTitle)}</h1><p>${drafts.length} ticket draft(s) for ${esc(repo)} · drafted by ${AGENT_NAME}</p></div></header>
 <main>
-  ${recap ? `<section class="card recap"><div class="head"><h2>Meeting recap</h2><button class="btn secondary" type="button" id="copy-recap">Copy recap</button></div>
-    <p class="meta">Ready to paste into an email or chat for the attendees. Ticket links appear once you add them with <code>minion link</code>.</p>
+  ${recap ? `<section class="card recap"><div class="head"><h2>Minutes of Meeting (email)</h2><button class="btn secondary" type="button" id="copy-recap">Copy email</button></div>
+    <p class="meta">Copy it into an email to the participants. Ticket links appear once you add them with <code>minion link</code>.</p>
     <pre id="recap-text">${esc(recap)}</pre></section>` : ""}
   <p class="note">Each button opens GitHub's "New issue" page with the ticket filled in. Nothing is created until you click <b>Submit new issue</b> there.</p>
 ${cards || '<p class="note">No tickets were approved for this meeting.</p>'}

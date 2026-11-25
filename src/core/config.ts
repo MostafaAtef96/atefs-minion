@@ -28,6 +28,12 @@ export const MinionConfig = z.object({
   dedupMaxCandidates: z.number().int().min(1).default(50),
   /** Image shown next to the "Drafted by Atef's Minion" signature; null for a text-only signature. */
   signatureImage: z.string().url().nullable().default(DEFAULT_SIGNATURE_IMAGE),
+  /** Closing line of the Minutes of Meeting email. */
+  minutesSignOff: z.string().default("Best regards"),
+  /** Title prefix for mid-sprint tickets, e.g. "[Mid-sprint]" (empty = no prefix). */
+  midSprintTitlePrefix: z.string().default(""),
+  /** GitHub label for mid-sprint tickets (empty = no label). */
+  midSprintLabel: z.string().default("mid-sprint"),
   /** Port of the local web form. */
   webPort: z.number().int().min(1).max(65535).default(4711),
 });

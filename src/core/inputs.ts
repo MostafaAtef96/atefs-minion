@@ -9,6 +9,8 @@ export interface NotesFile {
 
 export interface RunInputs {
   notes: NotesFile[];
+  /** Tickets from this meeting are mid-sprint additions (not part of the sprint planning). */
+  midSprint?: boolean;
   /** GitHub project (board) to add new issues to: "owner/number" or the board's link. Optional. */
   project?: string | null;
   /** Local clone of the repository; null/empty = the meeting is not about code (no code search). */
